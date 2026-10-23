@@ -1,0 +1,14 @@
+Scratch media library assets — provenance and license information
+
+These unmodified files are the content-addressed resources referenced by the official @scratch/scratch-gui 15.2.0 sprite, costume, backdrop and sound libraries. They were obtained from assets.scratch.mit.edu. manifest.json records each source URL, byte count and SHA-256 digest. Original library names, tags and asset identifiers remain in /scratch/libraries/*.json; those upstream JSON files do not contain per-asset author or license fields.
+
+Scratch is developed by the Scratch Foundation and its partners and affiliates. See https://scratchfoundation.org/.
+DUETBlox acknowledges the Scratch Foundation, the historical MIT Scratch Team, and the media contributors. Upstream illustration and sound credits are available at https://scratch.mit.edu/credits and in https://github.com/scratchfoundation/scratch-www/tree/develop/src/views/credits . DUETBlox does not claim ownership of their work.
+
+The official support FAQ says most Scratch support materials are available under Creative Commons Attribution-ShareAlike, with exceptions for named Scratch characters and the logo. It does not specify a version for every asset. The January 22, 2026 Terms of Service, section 7.2, directs users to each material's applicable license; it does not grant a single blanket license to every library item. This notice therefore does not relicense all files as CC BY-SA 2.0 or AGPL. Keep applicable original credits and license conditions when reusing media.
+
+Support FAQ: https://mitscratch.freshdesk.com/en/support/solutions/articles/4000156892-may-i-use-remix-scratch-support-materials-sprites-images-sounds-or-sample-projects-i-ve-found-on
+Current terms: https://mitscratch.freshdesk.com/en/support/solutions/articles/4000219182-scratch-terms-of-service
+Creative Commons license information: https://creativecommons.org/licenses/
+
+Scratch names, logos and character trademarks have separate restrictions described by the FAQ and section 7.3 of the current terms. Their presence as local educational compatibility media does not grant permission to use them as DUETBlox branding, advertising, or endorsement. DUETBlox is independent of Scratch. This provenance notice is not a determination of rights for every asset; per-asset permission or historical license evidence may be needed before wider redistribution.
