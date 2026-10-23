@@ -1,0 +1,454 @@
+{
+  "format": 1,
+  "description": "Exact pinned upstream source trees for DUETBlox 0.1.0; build changes and app source are supplied separately.",
+  "maxPartBytes": 25165824,
+  "archives": [
+    {
+      "name": "paper",
+      "version": "0.11.20221201200345",
+      "commit": "90d0fcf7e3e4a650eb4d308fb3cef94866113ed0",
+      "repository": "scratchfoundation/paper.js",
+      "url": "https://codeload.github.com/scratchfoundation/paper.js/tar.gz/90d0fcf7e3e4a650eb4d308fb3cef94866113ed0",
+      "bytes": 1108975,
+      "sha256": "c16dd488e483e71bca8fddaad560eb874b4e6635761fe53522854e0daa3ce92e",
+      "sourceType": "git-source-tree",
+      "topDirectory": "paper.js-90d0fcf7e3e4a650eb4d308fb3cef94866113ed0",
+      "entries": 70,
+      "legalFiles": [
+        "paper.js-90d0fcf7e3e4a650eb4d308fb3cef94866113ed0/LICENSE.txt"
+      ],
+      "archive": "paper-0.11.20221201200345-90d0fcf7e3e4.tar.gz",
+      "parts": [
+        {
+          "file": "paper-0.11.20221201200345-90d0fcf7e3e4.tar.gz",
+          "bytes": 1108975,
+          "sha256": "c16dd488e483e71bca8fddaad560eb874b4e6635761fe53522854e0daa3ce92e"
+        }
+      ]
+    },
+    {
+      "name": "scratch-editor",
+      "version": "15.2.0",
+      "commit": "970132883d63286762783448d4d487dcefedabf8",
+      "repository": "scratchfoundation/scratch-editor",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-editor/tar.gz/970132883d63286762783448d4d487dcefedabf8",
+      "bytes": 82456090,
+      "sha256": "3c2b739d6c1c1f2c197dabf7a9d22b998080d152d973425572d47e0f0f66e61b",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-editor-970132883d63286762783448d4d487dcefedabf8",
+      "entries": 3733,
+      "legalFiles": [
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-gui/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-gui/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-media-lib-scripts/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-media-lib-scripts/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-paint/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-paint/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-render/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-render/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-storage/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-storage/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-svg-renderer/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-svg-renderer/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-vm/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/scratch-vm/TRADEMARK",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/task-herder/LICENSE",
+        "scratch-editor-970132883d63286762783448d4d487dcefedabf8/packages/task-herder/TRADEMARK"
+      ],
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-editor-15.2.0-970132883d63.tar.gz.part01",
+          "bytes": 25165824,
+          "sha256": "f2986190bfee58c9e5b9309e7940e756f89ee938acb0a1e2388825f73ab92765"
+        },
+        {
+          "file": "scratch-editor-15.2.0-970132883d63.tar.gz.part02",
+          "bytes": 25165824,
+          "sha256": "04bee4ff84eb0846491607f7d573c03a802dd49f35418f9fb83840c079cec569"
+        },
+        {
+          "file": "scratch-editor-15.2.0-970132883d63.tar.gz.part03",
+          "bytes": 25165824,
+          "sha256": "be0d0cac601b87e23e86b7fbcd511dd4d8d2f51f3bebd3298f51ee9d33f3d834"
+        },
+        {
+          "file": "scratch-editor-15.2.0-970132883d63.tar.gz.part04",
+          "bytes": 6958618,
+          "sha256": "cbbb687f7f660977831c4b5fffec7469fe0d25f5da77616a20d9a8ba4f93f5dd"
+        }
+      ]
+    },
+    {
+      "name": "scratch-audio",
+      "version": "2.0.268",
+      "commit": "f81ee34ac23465bd63d88313c94e173af2a0cb99",
+      "repository": "scratchfoundation/scratch-audio",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-audio/tar.gz/f81ee34ac23465bd63d88313c94e173af2a0cb99",
+      "bytes": 481569,
+      "sha256": "f13dd93359cfe5feedd49b0bf544eaad420be7a5ea011d6c0d4dc8ac319c83dc",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-audio-f81ee34ac23465bd63d88313c94e173af2a0cb99",
+      "entries": 83,
+      "legalFiles": [
+        "scratch-audio-f81ee34ac23465bd63d88313c94e173af2a0cb99/LICENSE",
+        "scratch-audio-f81ee34ac23465bd63d88313c94e173af2a0cb99/TRADEMARK.txt"
+      ],
+      "archive": "scratch-audio-2.0.268-f81ee34ac234.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-audio-2.0.268-f81ee34ac234.tar.gz",
+          "bytes": 481569,
+          "sha256": "f13dd93359cfe5feedd49b0bf544eaad420be7a5ea011d6c0d4dc8ac319c83dc"
+        }
+      ]
+    },
+    {
+      "name": "scratch-audio",
+      "version": "2.0.271",
+      "commit": "575bdae7ccc07aa1d6c48ea87b84f8eb33135c59",
+      "repository": "scratchfoundation/scratch-audio",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-audio/tar.gz/575bdae7ccc07aa1d6c48ea87b84f8eb33135c59",
+      "bytes": 484276,
+      "sha256": "e7ea23d3ffff76999e649134858d259b8971e580f2a57c63b501035e4136ee22",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-audio-575bdae7ccc07aa1d6c48ea87b84f8eb33135c59",
+      "entries": 83,
+      "legalFiles": [
+        "scratch-audio-575bdae7ccc07aa1d6c48ea87b84f8eb33135c59/LICENSE",
+        "scratch-audio-575bdae7ccc07aa1d6c48ea87b84f8eb33135c59/TRADEMARK.txt"
+      ],
+      "archive": "scratch-audio-2.0.271-575bdae7ccc0.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-audio-2.0.271-575bdae7ccc0.tar.gz",
+          "bytes": 484276,
+          "sha256": "e7ea23d3ffff76999e649134858d259b8971e580f2a57c63b501035e4136ee22"
+        }
+      ]
+    },
+    {
+      "name": "scratch-blocks",
+      "version": "2.1.19",
+      "commit": "a599c002517095322fd76538530fa67e0610dafb",
+      "repository": "scratchfoundation/scratch-blocks",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-blocks/tar.gz/a599c002517095322fd76538530fa67e0610dafb",
+      "bytes": 555150,
+      "sha256": "f1f47341cf1e56da174ff9af2748370445f2a14d623998bfb227be442adc9a48",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-blocks-a599c002517095322fd76538530fa67e0610dafb",
+      "entries": 239,
+      "legalFiles": [
+        "scratch-blocks-a599c002517095322fd76538530fa67e0610dafb/LICENSE",
+        "scratch-blocks-a599c002517095322fd76538530fa67e0610dafb/TRADEMARK"
+      ],
+      "archive": "scratch-blocks-2.1.19-a599c0025170.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-blocks-2.1.19-a599c0025170.tar.gz",
+          "bytes": 555150,
+          "sha256": "f1f47341cf1e56da174ff9af2748370445f2a14d623998bfb227be442adc9a48"
+        }
+      ]
+    },
+    {
+      "name": "scratch-l10n",
+      "version": "6.1.118",
+      "commit": "91c3bc311fb95b562c273a9d24015d6287d101e9",
+      "repository": "scratchfoundation/scratch-l10n",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-l10n/tar.gz/91c3bc311fb95b562c273a9d24015d6287d101e9",
+      "bytes": 10945016,
+      "sha256": "5149d5aa60c06a09d0ead9bccaa89e440125b794b13341bf4e41073271fe2000",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-l10n-91c3bc311fb95b562c273a9d24015d6287d101e9",
+      "entries": 4696,
+      "legalFiles": [
+        "scratch-l10n-91c3bc311fb95b562c273a9d24015d6287d101e9/LICENSE",
+        "scratch-l10n-91c3bc311fb95b562c273a9d24015d6287d101e9/TRADEMARK"
+      ],
+      "archive": "scratch-l10n-6.1.118-91c3bc311fb9.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-l10n-6.1.118-91c3bc311fb9.tar.gz",
+          "bytes": 10945016,
+          "sha256": "5149d5aa60c06a09d0ead9bccaa89e440125b794b13341bf4e41073271fe2000"
+        }
+      ]
+    },
+    {
+      "name": "scratch-parser",
+      "version": "6.0.1",
+      "commit": "a9b466f23f3955442357432f8832d4273586bc6f",
+      "repository": "scratchfoundation/scratch-parser",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-parser/tar.gz/a9b466f23f3955442357432f8832d4273586bc6f",
+      "bytes": 20613752,
+      "sha256": "803aee77731ddde1d0c4f670ae7f4d8d97b4d249aa42841d546758fc75e984ef",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-parser-a9b466f23f3955442357432f8832d4273586bc6f",
+      "entries": 85,
+      "legalFiles": [
+        "scratch-parser-a9b466f23f3955442357432f8832d4273586bc6f/LICENSE",
+        "scratch-parser-a9b466f23f3955442357432f8832d4273586bc6f/TRADEMARK"
+      ],
+      "archive": "scratch-parser-6.0.1-a9b466f23f39.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-parser-6.0.1-a9b466f23f39.tar.gz",
+          "bytes": 20613752,
+          "sha256": "803aee77731ddde1d0c4f670ae7f4d8d97b4d249aa42841d546758fc75e984ef"
+        }
+      ]
+    },
+    {
+      "name": "scratch-render-fonts",
+      "version": "1.0.252",
+      "commit": "c0d70b0a7fbacb2175e2bc8beac1b94426d66064",
+      "repository": "scratchfoundation/scratch-render-fonts",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-render-fonts/tar.gz/c0d70b0a7fbacb2175e2bc8beac1b94426d66064",
+      "bytes": 697053,
+      "sha256": "b32e446f93152b850e520c117bc3edcb0c5cc2930825bef661496a9c0240ee6b",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-render-fonts-c0d70b0a7fbacb2175e2bc8beac1b94426d66064",
+      "entries": 32,
+      "legalFiles": [
+        "scratch-render-fonts-c0d70b0a7fbacb2175e2bc8beac1b94426d66064/LICENSE.txt"
+      ],
+      "archive": "scratch-render-fonts-1.0.252-c0d70b0a7fba.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-render-fonts-1.0.252-c0d70b0a7fba.tar.gz",
+          "bytes": 697053,
+          "sha256": "b32e446f93152b850e520c117bc3edcb0c5cc2930825bef661496a9c0240ee6b"
+        }
+      ]
+    },
+    {
+      "name": "scratch-sb1-converter",
+      "version": "2.0.280",
+      "commit": "ff46e54ee373f8a52e8f5da55bcabe734cb9e99e",
+      "repository": "scratchfoundation/scratch-sb1-converter",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-sb1-converter/tar.gz/ff46e54ee373f8a52e8f5da55bcabe734cb9e99e",
+      "bytes": 896042,
+      "sha256": "d7d56b8252c86e462b045e812fa107f6806e86b4126344b20a43e104a14e5511",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-sb1-converter-ff46e54ee373f8a52e8f5da55bcabe734cb9e99e",
+      "entries": 95,
+      "legalFiles": [
+        "scratch-sb1-converter-ff46e54ee373f8a52e8f5da55bcabe734cb9e99e/LICENSE",
+        "scratch-sb1-converter-ff46e54ee373f8a52e8f5da55bcabe734cb9e99e/TRADEMARK"
+      ],
+      "archive": "scratch-sb1-converter-2.0.280-ff46e54ee373.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-sb1-converter-2.0.280-ff46e54ee373.tar.gz",
+          "bytes": 896042,
+          "sha256": "d7d56b8252c86e462b045e812fa107f6806e86b4126344b20a43e104a14e5511"
+        }
+      ]
+    },
+    {
+      "name": "scratch-translate-extension-languages",
+      "version": "1.0.7",
+      "commit": "3c0b27e9b8f15eeb400ec4558e2eefca15e638fb",
+      "repository": "scratchfoundation/scratch-translate-extension-languages",
+      "url": "https://registry.npmjs.org/scratch-translate-extension-languages/-/scratch-translate-extension-languages-1.0.7.tgz",
+      "bytes": 60679,
+      "sha256": "cd87130bddf0126be86b5cf61c48cea600eca0056d43286c8ac14e69741e556d",
+      "sourceType": "npm-source-package",
+      "topDirectory": "package",
+      "entries": 18,
+      "legalFiles": [
+        "package/LICENSE",
+        "package/TRADEMARK"
+      ],
+      "archive": "scratch-translate-extension-languages-1.0.7-3c0b27e9b8f1.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-translate-extension-languages-1.0.7-3c0b27e9b8f1.tar.gz",
+          "bytes": 60679,
+          "sha256": "cd87130bddf0126be86b5cf61c48cea600eca0056d43286c8ac14e69741e556d"
+        }
+      ]
+    },
+    {
+      "name": "scratch-webpack-configuration",
+      "version": "3.1.2",
+      "commit": "0eaa101c23bd76bf4134e5d0b769d580d735ff5e",
+      "repository": "scratchfoundation/scratch-webpack-configuration",
+      "url": "https://codeload.github.com/scratchfoundation/scratch-webpack-configuration/tar.gz/0eaa101c23bd76bf4134e5d0b769d580d735ff5e",
+      "bytes": 128130,
+      "sha256": "43c18dc4e790f85754734045f6024eabc18cf650fcb29c0048c9d6b76827bcb1",
+      "sourceType": "git-source-tree",
+      "topDirectory": "scratch-webpack-configuration-0eaa101c23bd76bf4134e5d0b769d580d735ff5e",
+      "entries": 24,
+      "legalFiles": [
+        "scratch-webpack-configuration-0eaa101c23bd76bf4134e5d0b769d580d735ff5e/LICENSE"
+      ],
+      "archive": "scratch-webpack-configuration-3.1.2-0eaa101c23bd.tar.gz",
+      "parts": [
+        {
+          "file": "scratch-webpack-configuration-3.1.2-0eaa101c23bd.tar.gz",
+          "bytes": 128130,
+          "sha256": "43c18dc4e790f85754734045f6024eabc18cf650fcb29c0048c9d6b76827bcb1"
+        }
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "name": "@scratch/paper",
+      "version": "0.11.20221201200345",
+      "gitHead": "90d0fcf7e3e4a650eb4d308fb3cef94866113ed0",
+      "license": "MIT",
+      "registryTarball": "https://registry.npmjs.org/@scratch/paper/-/paper-0.11.20221201200345.tgz",
+      "registryIntegrity": "sha512-I3BZNrHeaQJt2H6TD7HGsuBKJPDDF/BIDOaRvnN7Gj/QBRvpSaRK8JAmzcrRHZ+AqNtKrG50eOkS/acMjTw3rw==",
+      "archive": "paper-0.11.20221201200345-90d0fcf7e3e4.tar.gz"
+    },
+    {
+      "name": "@scratch/scratch-gui",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/scratch-gui/-/scratch-gui-15.2.0.tgz",
+      "registryIntegrity": "sha512-ZjKknkK6Suh0qtfCgaKNUt2Ilz/j6pWdTn6+Brrb2NLn8iXviccLfiSezAFvXqFqWaOMjac0sMfe8JpKkkOPTg==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "@scratch/scratch-paint",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/scratch-paint/-/scratch-paint-15.2.0.tgz",
+      "registryIntegrity": "sha512-15cKYrAJxxUlmvFNmAHEZfJsvaRmybxf5VudLvKcR0U8dXlWgvXw415WsDQL5plDhvqdtEF9vDoXSXFf9kkW6Q==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "@scratch/scratch-render",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/scratch-render/-/scratch-render-15.2.0.tgz",
+      "registryIntegrity": "sha512-lz2fd03ovwpHA6w0GyDaVBBGAYewsUvV82DZ9RgNBg+SezfQQ+sNJViW5V2WHMizK/DnQh2legvcT5HFZed5cg==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "@scratch/scratch-storage",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/scratch-storage/-/scratch-storage-15.2.0.tgz",
+      "registryIntegrity": "sha512-+n/lRtGbABCBNeKhISbnj2S10xjfwZZpHg6M03+ZMEq2mbjR+7e2pkxFMpQERgpOGFDMESRcDv7TVPgsPNdSGQ==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "@scratch/scratch-svg-renderer",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/scratch-svg-renderer/-/scratch-svg-renderer-15.2.0.tgz",
+      "registryIntegrity": "sha512-ApXWKJC/p+9eFP9mGEkgjpykGRUoA5Wuj4P6NyWieWPS0DmfCjsUX5/X7ItrxlrNLozLlI+rEc5INCPp/edSKA==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "@scratch/scratch-vm",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/scratch-vm/-/scratch-vm-15.2.0.tgz",
+      "registryIntegrity": "sha512-0oRZ8UPUglEzOFRNMDs3Krcn/Gl9i1dQ3miNREFMaAA5UXqyF8Td1C3TL8U+fZjAJCs2fNSs6Wh0HTkC2mAAbA==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "@scratch/task-herder",
+      "version": "15.2.0",
+      "gitHead": "970132883d63286762783448d4d487dcefedabf8",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/@scratch/task-herder/-/task-herder-15.2.0.tgz",
+      "registryIntegrity": "sha512-baeZVoJNl0G7CwplVC0TwqH4w2uu2S9X5I4KHtGRQi+NWUUKnerqGydHs6xXUKkcJ5HciSvk+z+CPVaJzwD8Cw==",
+      "archive": "scratch-editor-15.2.0-970132883d63.tar.gz"
+    },
+    {
+      "name": "scratch-audio",
+      "version": "2.0.268",
+      "gitHead": "f81ee34ac23465bd63d88313c94e173af2a0cb99",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/scratch-audio/-/scratch-audio-2.0.268.tgz",
+      "registryIntegrity": "sha512-arkmLfsA7IxSniSWfTQWImYE0yTZQIGUg4i+phFb5mk3D95XXHSd/9nVzIzD9lzfQntnm4Gd9VY7S8qYuGINxQ==",
+      "archive": "scratch-audio-2.0.268-f81ee34ac234.tar.gz"
+    },
+    {
+      "name": "scratch-audio",
+      "version": "2.0.271",
+      "gitHead": "575bdae7ccc07aa1d6c48ea87b84f8eb33135c59",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/scratch-audio/-/scratch-audio-2.0.271.tgz",
+      "registryIntegrity": "sha512-sy/RKCCFq8ojsggGw4miqZNrizFBS6V9BH4X/VT8F1RBhNGcMZJA/d/NdiU9794jSGjNWXb6PA9Rv22cEVfo/g==",
+      "archive": "scratch-audio-2.0.271-575bdae7ccc0.tar.gz"
+    },
+    {
+      "name": "scratch-blocks",
+      "version": "2.1.19",
+      "gitHead": "a599c002517095322fd76538530fa67e0610dafb",
+      "license": "Apache-2.0",
+      "registryTarball": "https://registry.npmjs.org/scratch-blocks/-/scratch-blocks-2.1.19.tgz",
+      "registryIntegrity": "sha512-FgRoGhUkiGEmjblwmd5k+0HPlonoXkk1arwnnZBcSE05MKoZjWiP/ksHCfCcr2w/qqYQBrCynBk6flmwkcsUnA==",
+      "archive": "scratch-blocks-2.1.19-a599c0025170.tar.gz"
+    },
+    {
+      "name": "scratch-l10n",
+      "version": "6.1.118",
+      "gitHead": "91c3bc311fb95b562c273a9d24015d6287d101e9",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/scratch-l10n/-/scratch-l10n-6.1.118.tgz",
+      "registryIntegrity": "sha512-FsM0cslG+OHrbcHHZ6hbWrDSxm8SsRWDsNe9lv69UmVkY2wmOjiMCh3JZ4t/luVLs9r9NlHhS+MdjfiEDAV83g==",
+      "archive": "scratch-l10n-6.1.118-91c3bc311fb9.tar.gz"
+    },
+    {
+      "name": "scratch-parser",
+      "version": "6.0.1",
+      "gitHead": "a9b466f23f3955442357432f8832d4273586bc6f",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/scratch-parser/-/scratch-parser-6.0.1.tgz",
+      "registryIntegrity": "sha512-hoKg7TKEHLHo58Ua1qgzICls84G18+VzCIZ6efcooZOFWsqyuHBzVd5V7v3IqrSSiCGlUSzHb1l6mmtSULfWJw==",
+      "archive": "scratch-parser-6.0.1-a9b466f23f39.tar.gz"
+    },
+    {
+      "name": "scratch-render-fonts",
+      "version": "1.0.252",
+      "gitHead": "c0d70b0a7fbacb2175e2bc8beac1b94426d66064",
+      "license": null,
+      "registryTarball": "https://registry.npmjs.org/scratch-render-fonts/-/scratch-render-fonts-1.0.252.tgz",
+      "registryIntegrity": "sha512-leYCgtHMIqy36KqjraAiwaPYc9Bjy2L8J+vZ/CEnUE2PVP3z0dDoA4akz42/hk44kpVDzD574Th3SANt+PlLVA==",
+      "archive": "scratch-render-fonts-1.0.252-c0d70b0a7fba.tar.gz"
+    },
+    {
+      "name": "scratch-sb1-converter",
+      "version": "2.0.280",
+      "gitHead": "ff46e54ee373f8a52e8f5da55bcabe734cb9e99e",
+      "license": "AGPL-3.0-only",
+      "registryTarball": "https://registry.npmjs.org/scratch-sb1-converter/-/scratch-sb1-converter-2.0.280.tgz",
+      "registryIntegrity": "sha512-4XEw79ymchBNvY7/O0n9HauBkHVhh4UTfKbZHlwQ9RQew40WT4hZ8A7P84lxBqNUmReyZuTkNLqk71PFiXer/Q==",
+      "archive": "scratch-sb1-converter-2.0.280-ff46e54ee373.tar.gz"
+    },
+    {
+      "name": "scratch-translate-extension-languages",
+      "version": "1.0.7",
+      "gitHead": "3c0b27e9b8f15eeb400ec4558e2eefca15e638fb",
+      "license": "BSD-3-Clause",
+      "registryTarball": "https://registry.npmjs.org/scratch-translate-extension-languages/-/scratch-translate-extension-languages-1.0.7.tgz",
+      "registryIntegrity": "sha512-6+bQU9iVYv23T8J0SjpV6MTugm0y8myh/4DPgu1BGfccysdkaWzu3MkNGQyQRUlbqAiW9wM7ctfv3USPEkzTgg==",
+      "archive": "scratch-translate-extension-languages-1.0.7-3c0b27e9b8f1.tar.gz"
+    },
+    {
+      "name": "scratch-webpack-configuration",
+      "version": "3.1.2",
+      "gitHead": "0eaa101c23bd76bf4134e5d0b769d580d735ff5e",
+      "license": "BSD-3-Clause",
+      "registryTarball": "https://registry.npmjs.org/scratch-webpack-configuration/-/scratch-webpack-configuration-3.1.2.tgz",
+      "registryIntegrity": "sha512-bkvX4r9lq+qjE+2njV7fTOEWGjsVfJke8VibjZjnuHDntAsTq/V47/MYTzfbKomLZcDA+QXDuwS33nGtihiT9w==",
+      "archive": "scratch-webpack-configuration-3.1.2-0eaa101c23bd.tar.gz"
+    }
+  ]
+}
