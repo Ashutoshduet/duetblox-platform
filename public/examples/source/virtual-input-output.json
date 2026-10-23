@@ -1,0 +1,272 @@
+{
+  "targets": [
+    {
+      "isStage": true,
+      "name": "Stage",
+      "variables": {},
+      "lists": {},
+      "broadcasts": {},
+      "blocks": {},
+      "comments": {},
+      "currentCostume": 0,
+      "costumes": [
+        {
+          "name": "Backdrop",
+          "dataFormat": "svg",
+          "assetId": "7fdab01a6c8e86c57a87a8d7651c36fb",
+          "md5ext": "7fdab01a6c8e86c57a87a8d7651c36fb.svg",
+          "rotationCenterX": 240,
+          "rotationCenterY": 180
+        }
+      ],
+      "sounds": [],
+      "volume": 100,
+      "layerOrder": 0,
+      "tempo": 60,
+      "videoTransparency": 50,
+      "videoState": "on",
+      "textToSpeechLanguage": null
+    },
+    {
+      "isStage": false,
+      "name": "Sensor reader",
+      "variables": {
+        "sensor": [
+          "sensor",
+          0
+        ]
+      },
+      "lists": {},
+      "broadcasts": {},
+      "blocks": {
+        "flag": {
+          "opcode": "event_whenflagclicked",
+          "next": "forever",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "shadow": false,
+          "topLevel": true,
+          "x": 45,
+          "y": 40
+        },
+        "forever": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "flag",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "read"
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "read": {
+          "opcode": "data_setvariableto",
+          "next": "decide",
+          "parent": "forever",
+          "inputs": {
+            "VALUE": [
+              2,
+              "analog"
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "sensor",
+              "sensor"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        },
+        "analog": {
+          "opcode": "duetHardware_readAnalog",
+          "next": null,
+          "parent": "read",
+          "inputs": {
+            "PIN": [
+              1,
+              [
+                10,
+                "A0"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "decide": {
+          "opcode": "control_if_else",
+          "next": "wait",
+          "parent": "read",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "compare"
+            ],
+            "SUBSTACK": [
+              2,
+              "high"
+            ],
+            "SUBSTACK2": [
+              2,
+              "low"
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "compare": {
+          "opcode": "operator_gt",
+          "next": null,
+          "parent": "decide",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "sensor",
+                "sensor"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "512"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "high": {
+          "opcode": "duetHardware_digitalWrite",
+          "next": null,
+          "parent": "decide",
+          "inputs": {
+            "PIN": [
+              1,
+              [
+                4,
+                "13"
+              ]
+            ],
+            "VALUE": [
+              1,
+              [
+                4,
+                "1"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "low": {
+          "opcode": "duetHardware_digitalWrite",
+          "next": null,
+          "parent": "decide",
+          "inputs": {
+            "PIN": [
+              1,
+              [
+                4,
+                "13"
+              ]
+            ],
+            "VALUE": [
+              1,
+              [
+                4,
+                "0"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "wait": {
+          "opcode": "control_wait",
+          "next": null,
+          "parent": "decide",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                4,
+                "0.1"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        }
+      },
+      "comments": {},
+      "currentCostume": 0,
+      "costumes": [
+        {
+          "name": "Duet",
+          "dataFormat": "svg",
+          "assetId": "c5f4f7ddae0243426492b34b0956a353",
+          "md5ext": "c5f4f7ddae0243426492b34b0956a353.svg",
+          "rotationCenterX": 50,
+          "rotationCenterY": 56
+        }
+      ],
+      "sounds": [],
+      "volume": 100,
+      "layerOrder": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "size": 100,
+      "direction": 90,
+      "draggable": false,
+      "rotationStyle": "all around"
+    }
+  ],
+  "monitors": [
+    {
+      "id": "sensor",
+      "mode": "default",
+      "opcode": "data_variable",
+      "params": {
+        "VARIABLE": "sensor"
+      },
+      "spriteName": "Sensor reader",
+      "value": 0,
+      "width": 0,
+      "height": 0,
+      "x": 8,
+      "y": 8,
+      "visible": true,
+      "sliderMin": 0,
+      "sliderMax": 1023,
+      "isDiscrete": true
+    }
+  ],
+  "extensions": [
+    "duetHardware"
+  ],
+  "meta": {
+    "semver": "3.0.0",
+    "vm": "15.2.0",
+    "agent": "DUETBlox original virtual board example"
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "targets": [
+    {
+      "isStage": true,
+      "name": "Stage",
+      "variables": {},
+      "lists": {},
+      "broadcasts": {},
+      "blocks": {},
+      "comments": {},
+      "currentCostume": 0,
+      "costumes": [
+        {
+          "name": "Backdrop",
+          "dataFormat": "svg",
+          "assetId": "7fdab01a6c8e86c57a87a8d7651c36fb",
+          "md5ext": "7fdab01a6c8e86c57a87a8d7651c36fb.svg",
+          "rotationCenterX": 240,
+          "rotationCenterY": 180
+        }
+      ],
+      "sounds": [],
+      "volume": 100,
+      "layerOrder": 0,
+      "tempo": 60,
+      "videoTransparency": 50,
+      "videoState": "on",
+      "textToSpeechLanguage": null
+    },
+    {
+      "isStage": false,
+      "name": "Data explorer",
+      "variables": {
+        "table": [
+          "table",
+          ""
+        ],
+        "result": [
+          "result",
+          0
+        ]
+      },
+      "lists": {},
+      "broadcasts": {},
+      "blocks": {
+        "flag": {
+          "opcode": "event_whenflagclicked",
+          "next": "setTable",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "shadow": false,
+          "topLevel": true,
+          "x": 45,
+          "y": 45
+        },
+        "setTable": {
+          "opcode": "data_setvariableto",
+          "next": "setResult",
+          "parent": "flag",
+          "inputs": {
+            "VALUE": [
+              3,
+              "parse",
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "table",
+              "table"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        },
+        "parse": {
+          "opcode": "duetData_fromJSON",
+          "next": null,
+          "parent": "setTable",
+          "inputs": {
+            "JSON": [
+              1,
+              [
+                10,
+                "[[21,22],[23,24]]"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "setResult": {
+          "opcode": "data_setvariableto",
+          "next": "say",
+          "parent": "setTable",
+          "inputs": {
+            "VALUE": [
+              3,
+              "inner",
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "result",
+              "result"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        },
+        "inner": {
+          "opcode": "duetData_item",
+          "next": null,
+          "parent": "setResult",
+          "inputs": {
+            "INDEX": [
+              1,
+              [
+                4,
+                "1"
+              ]
+            ],
+            "LIST": [
+              3,
+              "outer",
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "outer": {
+          "opcode": "duetData_item",
+          "next": null,
+          "parent": "inner",
+          "inputs": {
+            "INDEX": [
+              1,
+              [
+                4,
+                "2"
+              ]
+            ],
+            "LIST": [
+              3,
+              [
+                12,
+                "table",
+                "table"
+              ],
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "say": {
+          "opcode": "looks_say",
+          "next": null,
+          "parent": "setResult",
+          "inputs": {
+            "MESSAGE": [
+              3,
+              [
+                12,
+                "result",
+                "result"
+              ],
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        }
+      },
+      "comments": {},
+      "currentCostume": 0,
+      "costumes": [
+        {
+          "name": "Duet",
+          "dataFormat": "svg",
+          "assetId": "c5f4f7ddae0243426492b34b0956a353",
+          "md5ext": "c5f4f7ddae0243426492b34b0956a353.svg",
+          "rotationCenterX": 50,
+          "rotationCenterY": 56
+        }
+      ],
+      "sounds": [],
+      "volume": 100,
+      "layerOrder": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "size": 100,
+      "direction": 90,
+      "draggable": false,
+      "rotationStyle": "all around"
+    }
+  ],
+  "monitors": [],
+  "extensions": [
+    "duetData"
+  ],
+  "meta": {
+    "semver": "3.0.0",
+    "vm": "15.2.0",
+    "agent": "DUETBlox original learning example"
+  }
+}
