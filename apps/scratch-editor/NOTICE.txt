@@ -1,0 +1,39 @@
+DUETBlox editor integration, 2026.
+
+This application includes and modifies official Scratch components maintained by
+Scratch Foundation and originating at the Massachusetts Institute of Technology.
+It is an independent project and is not endorsed by Scratch Foundation or MIT.
+Scratch, ScratchJr, their logos and named characters are their owners' marks.
+The default Duet robot and DUETBlox logo in this integration are original artwork.
+
+The editor integration and current official GUI/VM/render/storage/SVG-renderer
+are distributed under GNU Affero General Public License version 3 only.
+See LICENSE and the component license files for their full terms. Scratch Blocks
+uses Apache License 2.0. Other bundled third-party license notices accompany the
+upstream distribution JavaScript and remain in the build output.
+
+Pinned components: @scratch/scratch-gui, scratch-vm, scratch-render,
+scratch-storage and scratch-svg-renderer 15.2.0; scratch-audio 2.0.271.
+Official sources: https://github.com/scratchfoundation/scratch-editor
+Blocks: https://github.com/scratchfoundation/scratch-blocks
+
+DUETBlox changes are in src/, webpack.config.cjs and scripts/. Reproducible build:
+  npm ci
+  npm run build
+The build emits ../../public/scratch. npm dependencies and integrity hashes are
+pinned by package-lock.json. The npm packages include upstream source files.
+
+The build modifies copied upstream bundles in these explicitly audited ways:
+- Webpack lazy-asset paths use /scratch/ and /scratch/vendor/ instead of /.
+- Localhost uses upstream's inline sandbox script delivery path to work with
+  current browser private-network protections, without weakening iframe sandbox.
+- The default English project title uses DUETBlox branding.
+- The unused hull.js dynamic point-format converters are replaced by converters
+  accepting only ordinary coordinate arrays, removing the Function-based code
+  injection primitive described in GHSA-q849-wxrc-vqrp. Scratch's inspected caller
+  passes no format parameter; normal geometry behavior is preserved.
+
+Source for these changes and build instructions is provided with DUETBlox's
+source download. Component sources can also be obtained from the exact npm
+package versions and the official repositories above. Applicable copyright,
+license, third-party notices and trademark notices must be preserved.

@@ -1,0 +1,23 @@
+{
+  "name": "@duetblox/scratch-editor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@scratch/scratch-gui": "15.2.0",
+    "@scratch/scratch-render": "15.2.0",
+    "@scratch/scratch-storage": "15.2.0",
+    "@scratch/scratch-svg-renderer": "15.2.0",
+    "@scratch/scratch-vm": "15.2.0",
+    "scratch-audio": "2.0.271"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.0",
+    "webpack": "5.111.1",
+    "webpack-cli": "5.1.4"
+  }
+}
