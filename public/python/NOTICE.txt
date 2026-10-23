@@ -1,0 +1,29 @@
+DUETBlox Python runtime
+
+The files in runtime/ are unmodified selected files from the official Pyodide
+314.0.7 core release. It includes CPython 3.14.2 compiled to WebAssembly with
+Emscripten 5.0.3. No native Python executable is shipped or invoked by DUETBlox.
+
+Pyodide source (Mozilla Public License 2.0):
+https://github.com/pyodide/pyodide/tree/b1e4fcc2488962f6360a97f19b9982d6fdb5d16f
+Source archive:
+https://github.com/pyodide/pyodide/archive/b1e4fcc2488962f6360a97f19b9982d6fdb5d16f.tar.gz
+Build instructions:
+https://pyodide.org/en/stable/development/building-from-sources.html
+Release provenance and archive digest: upstream-release.json
+Exact selected-file hashes: runtime-manifest.json
+
+CPython source:
+https://github.com/python/cpython/tree/v3.14.2
+Emscripten source:
+https://github.com/emscripten-core/emscripten/tree/5.0.3
+
+Copies of the upstream Pyodide, CPython, Emscripten and musl licenses are
+included beside this notice. CPYTHON-INCORPORATED-SOFTWARE-NOTICES.rst retains
+the complete incorporated-software notice document from CPython 3.14.2.
+Their exact local hashes and upstream URLs are in notices-manifest.json.
+The runtime loader and WebAssembly module are unchanged.
+The distribution's Python package index is retained for integrity, but its
+listed optional wheels are not included or automatically downloaded.
+
+DUETBlox's editor/worker integration is separate original AGPL-3.0-only code.

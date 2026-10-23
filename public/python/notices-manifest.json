@@ -1,0 +1,36 @@
+{
+  "format": "duetblox-python-notices",
+  "version": 1,
+  "files": [
+    {
+      "name": "LICENSE-PYODIDE.txt",
+      "source": "https://raw.githubusercontent.com/pyodide/pyodide/b1e4fcc2488962f6360a97f19b9982d6fdb5d16f/LICENSE",
+      "bytes": 16725,
+      "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+    },
+    {
+      "name": "LICENSE-CPYTHON.txt",
+      "source": "https://raw.githubusercontent.com/python/cpython/v3.14.2/LICENSE",
+      "bytes": 13804,
+      "sha256": "b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231"
+    },
+    {
+      "name": "LICENSE-EMSCRIPTEN.txt",
+      "source": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/LICENSE",
+      "bytes": 5093,
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+    },
+    {
+      "name": "LICENSE-MUSL.txt",
+      "source": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/system/lib/libc/musl/COPYRIGHT",
+      "bytes": 6204,
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af"
+    },
+    {
+      "name": "CPYTHON-INCORPORATED-SOFTWARE-NOTICES.rst",
+      "source": "https://raw.githubusercontent.com/python/cpython/v3.14.2/Doc/license.rst",
+      "bytes": 57595,
+      "sha256": "c695d550b135e53e38807e76496d1db17d22c40e461d1f3f354c86188d3305dd"
+    }
+  ]
+}
