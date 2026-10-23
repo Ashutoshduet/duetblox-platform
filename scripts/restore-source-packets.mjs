@@ -2,9 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash, randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {normalizeAppBase} from '../src/app-paths.js';
 
 const defaultRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const defaultHost = 'https://duetblox.ashotosh01singh2000.chatgpt.site';
+const defaultHost = process.env.DUETBLOX_SOURCE_BASE_URL || 'https://duetpower.in/duetblox/';
 const sha = data => createHash('sha256').update(data).digest('hex');
 const maximumArchiveBytes = 512 * 1024 * 1024;
 function safeName(value) {
@@ -97,7 +98,8 @@ async function writeMissing(root, relative, data, expected) {
 export async function restoreSourcePackets({root = defaultRoot, host = defaultHost, fetchImpl = globalThis.fetch} = {}) {
   root = await fs.realpath(root);
   const base = new URL(httpsURL(host));
-  if (base.search || base.pathname !== '/') throw new Error('The source host must be an HTTPS origin.');
+  if (base.search) throw new Error('The source host must be an HTTPS application directory without a query.');
+  base.pathname = normalizeAppBase(base.pathname);
   if (typeof fetchImpl !== 'function') throw new Error('A Fetch implementation is required.');
   const groups = new Map();
   for (const group of ['upstream', 'hardware']) {
@@ -170,7 +172,7 @@ export async function restoreSourcePackets({root = defaultRoot, host = defaultHo
   }
   // Smaller hardware packets and source instructions remain on the same host.
   for (const [groupName, group] of groups) for (const [name, expected] of group.sums) if (!existing.get(`${groupName}/${name}`)) {
-    const address = new URL(`/source/${groupName}/${name.split('/').map(encodeURIComponent).join('/')}`, base).href;
+    const address = new URL(`source/${groupName}/${name.split('/').map(encodeURIComponent).join('/')}`, base).href;
     const data = await download(fetchImpl, address, name, group.entries.get(name)?.bytes);
     if (sha(data) !== expected) throw new Error(`Hosted source packet failed verification: ${name}.`);
     if (await writeMissing(root, `${group.prefix}/${name}`, data, expected)) restored++; else verified++;
