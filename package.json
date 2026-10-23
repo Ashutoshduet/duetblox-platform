@@ -1,0 +1,41 @@
+{
+  "name": "duetblox",
+  "version": "0.7.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run build:editor && node scripts/package-scratch-media.mjs && node scripts/prepare-ml-models.mjs && node scripts/prepare-python-runtime.mjs && node scripts/build-studio-examples.mjs && node scripts/source-archive.mjs && vite build && node scripts/build-offline.mjs",
+    "build:editor": "npm --prefix apps/scratch-editor run build",
+    "test": "node --test src/ml/*.test.js src/ml/text/*.test.js src/ml/audio/waveform.test.js src/junior/model.test.js src/junior/media.test.js src/hardware/tests/*.test.mjs src/hardware/*.test.js tools/windows-bridge/server.test.mjs src/programming/*.test.js src/workspace.test.js src/offline/*.test.js src/learn/*.test.js src/python/*.test.js src/ml/numbers/*.test.js src/classroom/*.test.js tools/classroom-server/*.test.mjs src/ml/objects/*.test.js",
+    "preview": "vite preview --host 127.0.0.1",
+    "start": "node scripts/serve-built.mjs",
+    "offline:download": "node scripts/package-scratch-media.mjs --download && node scripts/prepare-ml-models.mjs --download && node scripts/prepare-python-runtime.mjs --download",
+    "classroom": "node tools/classroom-server/server.mjs",
+    "classroom:init": "node tools/classroom-server/server.mjs --init"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "lucide-react": "0.468.0",
+    "@tensorflow/tfjs": "1.3.1",
+    "@teachablemachine/image": "0.8.5",
+    "jszip": "3.10.1",
+    "esptool-js": "0.7.0",
+    "webserial-flasher": "1.0.1",
+    "@tensorflow-models/speech-commands": "0.4.0",
+    "@teachablemachine/pose": "0.8.6",
+    "@tensorflow-models/posenet": "2.2.1"
+  },
+  "devDependencies": {
+    "vite": "6.4.4",
+    "@vitejs/plugin-react": "4.7.0"
+  },
+  "overrides": {
+    "node-fetch": "2.7.0",
+    "@teachablemachine/pose": {
+      "@tensorflow-models/posenet": "2.2.1"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+node_modules/
+dist/
+.sites-runtime/
+work/
+*.log
+.DS_Store
+apps/scratch-editor/node_modules/
+public/scratch/
+public/source/duetblox-source.zip
+# Reproducible vendor assets ship in dist and the laptop handoff, not Git pushes.
+public/models/**
+!public/models/**/
+!public/models/**/*.json
+!public/models/**/*.txt
+public/scratch-media/**
+!public/scratch-media/*.json
+!public/scratch-media/*.txt
+public/source/**/*.tar.gz*
+public/source/**/*.zip*
+
+# Restored/generated runtime and private local settings.
+public/python/runtime/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+classroom-keys.json
+classroom-data/
+coverage/
+playwright-report/
+test-results/
