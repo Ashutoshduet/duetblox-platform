@@ -1,0 +1,23 @@
+html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fb; }
+#logo_img { content: url('./duetblox-logo.svg'); width: 110px; height: 30px; object-fit: contain; }
+[class*='menu-bar_menu-bar_'] { background: #5355cd !important; }
+.duet-studio [class*='menu-bar_menu-bar_'] { background: #285747 !important; }
+.duet-studio [class*='gui_body-wrapper_'] { background: #f5f8f3; }
+.duet-studio [class*='gui_tab_'] { border-radius: 10px 10px 0 0; font-family: inherit; }
+.duet-studio [class*='gui_tab-is-selected_'] { color: #245c43; background: #fff; }
+/* Upstream reserves a 600px editor column and refuses to shrink it. Embedded
+   laptop viewports can be narrower than its 1024px assumption. The public
+   stage-size action chooses a small preview; let Code/Costumes/Sounds use the
+   remaining space so sprite and backdrop controls stay inside the iframe. */
+@media (max-width: 1023px) {
+  body [class*='gui_editor-wrapper_'] { flex-basis: 0; flex-shrink: 1; min-width: 0; }
+}
+.stage-only, .stage-only #app { background: white; }
+.stage-only #app { position: relative; }
+.stage-only canvas { width: 100%; height: 100%; display: block; outline: 0; touch-action: none; }
+.stage-only canvas:focus-visible { outline: 3px solid #7c6deb; outline-offset: -3px; }
+.load-error { padding: 32px; margin: 8% auto; max-width: 480px; background: white; border-radius: 20px; color: #282842; }
+.load-error button, #stage-answer button { background: #5956d6; color: white; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+#stage-answer { position: absolute; bottom: 8px; left: 8px; right: 8px; background: white; border: 2px solid #aea8ed; border-radius: 12px; padding: 10px; display: flex; gap: 8px; align-items: end; }
+#stage-answer label { flex: 1; font-size: 13px; } #stage-answer input { display: block; width: 90%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px; }
