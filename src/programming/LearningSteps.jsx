@@ -1,3 +1,4 @@
+import {appPath} from '../app-paths.js';
 import React, {useEffect, useRef, useState} from 'react';
 import {Footprints, Play, Square, ArrowRight, CheckCircle2} from 'lucide-react';
 import {sendEditor} from '../bridge.js';
@@ -77,7 +78,7 @@ export default function LearningSteps({iframe, ready, active}) {
     finally{if(isCurrent()){operation.current=null;setBusy(false);}}
   };
   return <div className="learning-steps">
-    <div className="studio-starter"><a href="/examples/learning-steps.sb3" download>Download a learning example</a><span>Save your project first, then use Open. Predict: counter 5 → 7; character moves 10.</span></div>
+    <div className="studio-starter"><a href={appPath('/examples/learning-steps.sb3')} download>Download a learning example</a><span>Save your project first, then use Open. Predict: counter 5 → 7; character moves 10.</span></div>
     <p>Follow a program one execution step at a time. Watch the highlighted script and variable values as you go.</p>
     <div className="learning-state" role="status"><span className={`studio-state-dot ${state.active?'paused':''}`}/><strong>{state.status==='paused'?'Paused for you':state.status==='completed'?'Program completed':state.status==='running'?'Running normally':state.status==='stopped'?'Learning run stopped':'Ready to explore'}</strong><span>{state.stepCount} steps</span></div>
     {error&&<p role="alert" className="coding-error">{error}</p>}
