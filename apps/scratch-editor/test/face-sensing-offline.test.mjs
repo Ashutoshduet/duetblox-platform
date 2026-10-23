@@ -1,3 +1,5 @@
+import {appPath, normalizeAppBase} from '../../../src/app-paths.js';
+const appBase=normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -14,7 +16,8 @@ const files = [
 // Execute only the actual, narrowly selected detector initialization chain
 // against a fake detector API. Neither the GUI nor MediaPipe is executed here.
 function detectorInitializer(source) {
-  const marker = `solutionPath:${JSON.stringify(faceSensingSolutionPath)}`;
+  const facePath=appPath(faceSensingSolutionPath,appBase);
+  const marker = `solutionPath:${JSON.stringify(facePath)}`;
   const markerAt = source.indexOf(marker);
   assert.notEqual(markerAt, -1, 'the final bundle must contain the hosted model path');
   const start = source.lastIndexOf(';', markerAt) + 1;
@@ -48,10 +51,10 @@ test('final GUI and VM Face Sensing initialize with local assets and do not fall
     const context = {runtime: {ioDevices: null, emit: (...args) => events.push(args)}};
     await initialize({createDetector: async (model, config) => {calls.push({model, config}); return detector;}}, 'face-model').call(context);
     assert.equal(context._faceDetector, detector);
-    assert.deepEqual(calls, [{model: 'face-model', config: {runtime: 'mediapipe', solutionPath: faceSensingSolutionPath, maxFaces: 1}}]);
+    assert.deepEqual(calls, [{model: 'face-model', config: {runtime: 'mediapipe', solutionPath: appPath(faceSensingSolutionPath,appBase), maxFaces: 1}}]);
     const attempts = [];
     await initialize({createDetector: async (model, config) => {attempts.push(config.solutionPath); throw Error('local asset unavailable');}}, 'face-model').call(context);
-    assert.deepEqual(attempts, [faceSensingSolutionPath]);
+    assert.deepEqual(attempts, [appPath(faceSensingSolutionPath,appBase)]);
     assert.deepEqual(events, [['EXTENSION_DATA_LOADING', false], ['DUET_EXTENSION_ERROR', {extension: 'faceSensing', message: faceSensingFailureMessage}]]);
   }
 });
@@ -67,4 +70,15 @@ test('all Face Sensing graph, model and SIMD/non-SIMD runtime assets exist at th
     assert.equal(createHash('sha256').update(copied).digest('hex'), createHash('sha256').update(original).digest('hex'), `${name} must retain official asset bytes`);
     if (name.endsWith('.wasm')) assert.deepEqual([...copied.subarray(0, 4)], [0, 97, 115, 109], `${name} must be a WASM binary`);
   }
+});
+
+
+test('mounted Face Sensing patches keep both pinned bundles inside the deployment directory',async()=>{
+ for(const [file,upstream] of files){
+  const source=await fs.readFile(new URL(upstream,root),'utf8');
+  const patched=patchFaceSensingAssets(source,file,'/duetblox/');
+  assert.equal(patched.split('solutionPath:"/duetblox/scratch/chunks/mediapipe/face_detection"').length,2);
+  assert.equal(patched.includes('solutionPath:"/scratch/'),false);
+  assert.equal(patched.includes('https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@'),false);
+ }
 });

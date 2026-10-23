@@ -1,3 +1,5 @@
+import {normalizeAppBase} from '../../../src/app-paths.js';
+const appBase=normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -59,7 +61,9 @@ test('HTTPS costume editor loads source chunks into opaque sandboxes without res
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
       if (url.origin !== fixtureOrigin) return route.abort();
-      if (url.pathname === '/harness') return route.fulfill({contentType: 'text/html', body: '<!doctype html><iframe title="Editor" src="/scratch/index.html" style="width:100%;height:850px"></iframe><script>window.ready=false;window.addEventListener("message",event=>{if(event.origin===location.origin&&event.data.type==="ready")window.ready=true})</script>'});
+      if (url.pathname === '/harness') return route.fulfill({contentType: 'text/html', body: `<!doctype html><iframe title="Editor" src="${appBase}scratch/index.html" style="width:100%;height:850px"></iframe><script>window.ready=false;window.addEventListener("message",event=>{if(event.origin===location.origin&&event.data.type==="ready")window.ready=true})</script>`});
+      if(!url.pathname.startsWith(appBase))return route.fulfill({status:404,body:'Outside the DUETBlox mount'});
+      url.pathname='/'+url.pathname.slice(appBase.length);
       const file = path.resolve(directory, '.' + decodeURIComponent(url.pathname));
       if (!file.startsWith(directory)) return route.abort();
       try { return await route.fulfill({contentType: mime[path.extname(file)] || 'application/octet-stream', body: await fs.readFile(file)}); }

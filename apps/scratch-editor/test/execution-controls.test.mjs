@@ -1,3 +1,5 @@
+import {normalizeAppBase} from '../../../src/app-paths.js';
+const appBase=normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 import {test, before, after} from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -12,7 +14,7 @@ const editorOverlay = process.env.DUET_EDITOR_OVERLAY && path.resolve(process.en
 const evidence = fileURLToPath(new URL('../../../work/release-060/', import.meta.url));
 const mime = {'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.wasm': 'application/wasm'};
 let server, browser, origin;
-const harness = `<!doctype html><html><body style="margin:0"><iframe title="DUETBlox editor" src="/scratch/index.html" style="border:0;width:100vw;height:100vh"></iframe><script>
+const harness = `<!doctype html><html><body style="margin:0"><iframe title="DUETBlox editor" src="${appBase}scratch/index.html" style="border:0;width:100vw;height:100vh"></iframe><script>
 window.messages=[];addEventListener('message',event=>{if(event.source===document.querySelector('iframe').contentWindow&&event.origin===location.origin&&event.data?.channel==='duetblox')messages.push(event.data)});
 window.send=(type,payload={})=>new Promise((resolve,reject)=>{const requestId='execution-'+crypto.randomUUID();const listener=event=>{if(event.source!==document.querySelector('iframe').contentWindow||event.origin!==location.origin||event.data?.channel!=='duetblox'||event.data.requestId!==requestId||!['result','error'].includes(event.data.type))return;clearTimeout(timeout);removeEventListener('message',listener);event.data.type==='error'?reject(Error(event.data.payload.message)):resolve(event.data.payload)};const timeout=setTimeout(()=>{removeEventListener('message',listener);reject(Error('Command timed out: '+type))},15000);addEventListener('message',listener);document.querySelector('iframe').contentWindow.postMessage({channel:'duetblox',type,requestId,payload},location.origin)});
 </script></body></html>`;
@@ -22,6 +24,8 @@ before(async () => {
   server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://local');
     if (url.pathname === '/harness') {res.writeHead(200, {'Content-Type': 'text/html'}); res.end(harness); return;}
+    if(!url.pathname.startsWith(appBase)){res.writeHead(404);res.end();return;}
+    url.pathname='/'+url.pathname.slice(appBase.length);
     let file = path.resolve(publicRoot, '.' + decodeURIComponent(url.pathname));
     if (!file.startsWith(publicRoot + path.sep)) {res.writeHead(403); res.end(); return;}
     if (editorOverlay && /^\/scratch\/duetblox-[\w.-]+\.js$/.test(url.pathname)) file = path.join(editorOverlay, path.basename(url.pathname));

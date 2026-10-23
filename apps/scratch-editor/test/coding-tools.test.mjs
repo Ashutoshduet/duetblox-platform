@@ -1,3 +1,5 @@
+import {normalizeAppBase} from '../../../src/app-paths.js';
+const appBase=normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 import {test, before, after} from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -12,7 +14,7 @@ const evidence = fileURLToPath(new URL('../../../work/release-050/', import.meta
 const mime = {'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.wasm': 'application/wasm'};
 let server, browser, origin;
 const delayedCostumeId = '00000000000000000000000000000071';
-const harness = `<!doctype html><html><body style="margin:0"><iframe title="DUETBlox editor" src="/scratch/index.html" style="border:0;width:100vw;height:100vh"></iframe><script>
+const harness = `<!doctype html><html><body style="margin:0"><iframe title="DUETBlox editor" src="${appBase}scratch/index.html" style="border:0;width:100vw;height:100vh"></iframe><script>
 window.messages=[];addEventListener('message',event=>{if(event.source===document.querySelector('iframe').contentWindow&&event.origin===location.origin&&event.data?.channel==='duetblox')messages.push(event.data)});
 window.send=(type,payload={})=>new Promise((resolve,reject)=>{const requestId='coding-'+crypto.randomUUID();const listener=event=>{if(event.source!==document.querySelector('iframe').contentWindow||event.origin!==location.origin||event.data?.channel!=='duetblox'||event.data.requestId!==requestId||!['result','error'].includes(event.data.type))return;clearTimeout(timeout);removeEventListener('message',listener);event.data.type==='error'?reject(Error(event.data.payload.message)):resolve(event.data.payload)};const timeout=setTimeout(()=>{removeEventListener('message',listener);reject(Error('Command timed out: '+type))},15000);addEventListener('message',listener);document.querySelector('iframe').contentWindow.postMessage({channel:'duetblox',type,requestId,payload},location.origin)});
 </script></body></html>`;
@@ -22,6 +24,8 @@ before(async () => {
   server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://local');
     if (url.pathname === '/harness') {res.writeHead(200, {'Content-Type': 'text/html'}); res.end(url.searchParams.get('mode') === 'stage' ? harness.replace('/scratch/index.html', '/scratch/index.html?mode=stage') : harness); return;}
+    if(!url.pathname.startsWith(appBase)){res.writeHead(404);res.end();return;}
+    url.pathname='/'+url.pathname.slice(appBase.length);
     if (url.pathname === `/scratch-media/${delayedCostumeId}.svg`) {
       setTimeout(() => {res.writeHead(200, {'Content-Type': 'image/svg+xml'}); res.end('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="green"/></svg>');}, 3200);
       return;
@@ -45,7 +49,7 @@ async function open(mode = 'editor') {
   const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
   page.setDefaultTimeout(10000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${origin}/harness?mode=${mode}`);
+  await page.goto(`${origin}/harness?mode=${mode}`, {waitUntil: 'domcontentloaded', timeout: 30000});
   await page.waitForFunction(() => window.messages.some(m => m.type === 'ready'), null, {timeout: 30000});
   return {page, frame: page.frames().find(f => f.url().includes('/scratch/index.html')), errors};
 }
@@ -251,11 +255,20 @@ test('embedded laptop layout keeps stage and backdrop controls visible and prese
     await page.locator('iframe').evaluate(element => {element.style.width = 'calc(100vw - 82px)';});
     await page.setViewportSize({width: 1024, height: 900});
     const stage = frame.locator('[class*="stage_stage_"] canvas').first();
-    await page.waitForTimeout(200);
+    const stageWidth = async (width, message) => {
+      // React/canvas rendering follows the resize event asynchronously. Wait
+      // for the actual result instead of assuming every machine paints in 200ms.
+      await frame.waitForFunction(expected => Math.round(document.querySelector('[class*="stage_stage_"] canvas')?.getBoundingClientRect().width) === expected, width, {timeout: 5000});
+      assert.equal(Math.round((await stage.boundingBox()).width), width, message);
+    };
     const measurements = [];
     for (const width of [1024, 850, 1280]) {
       await page.setViewportSize({width, height: 900});
-      await page.waitForTimeout(200);
+      await frame.waitForFunction(expected => {
+        const stage = document.querySelector('[class*="stage-selector_stage-selector_"]');
+        const code = document.querySelector('[class*="gui_editor-wrapper_"]');
+        return innerWidth === expected && stage?.getBoundingClientRect().right <= expected + 1 && code?.getBoundingClientRect().width >= 300;
+      }, width - 82, {timeout: 5000});
       const rects = await frame.evaluate(() => {
         const bounds = selector => {const r = document.querySelector(selector).getBoundingClientRect(); return {left: r.left, right: r.right, width: r.width};};
         return {viewport: innerWidth, stage: bounds('[class*="stage-selector_stage-selector_"]'), column: bounds('[class*="gui_stage-and-target-wrapper_"]'), code: bounds('[class*="gui_editor-wrapper_"]')};
@@ -267,19 +280,17 @@ test('embedded laptop layout keeps stage and backdrop controls visible and prese
     }
     await frame.getByRole('button', {name: 'Switch to small stage', exact: true}).click();
     await page.setViewportSize({width: 1400, height: 900});
-    await page.waitForTimeout(200);
-    assert.equal(Math.round((await stage.boundingBox()).width), 240, 'Widening must preserve the student’s small-stage choice');
+    await stageWidth(240, 'Widening must preserve the student’s small-stage choice');
     await frame.getByRole('button', {name: 'Switch to large stage', exact: true}).click();
+    await stageWidth(480, 'The manual large-stage choice is applied before narrowing');
     await page.setViewportSize({width: 850, height: 900});
-    await page.waitForTimeout(200);
-    assert.equal(Math.round((await stage.boundingBox()).width), 240, 'Very narrow viewports temporarily use small stage');
+    await stageWidth(240, 'Very narrow viewports temporarily use small stage');
     await page.setViewportSize({width: 1400, height: 900});
-    await page.waitForTimeout(200);
-    assert.equal(Math.round((await stage.boundingBox()).width), 480, 'Restore the chosen large stage when it fits again');
+    await stageWidth(480, 'Restore the chosen large stage when it fits again');
     await fs.mkdir(path.resolve(evidence, '../block-usability'), {recursive: true});
     await fs.writeFile(path.resolve(evidence, '../block-usability/responsive-editor-measurements.json'), JSON.stringify(measurements, null, 2));
     await page.setViewportSize({width: 1024, height: 900});
-    await page.waitForTimeout(200);
+    await frame.waitForFunction(() => innerWidth === 942);
     await page.screenshot({path: path.resolve(evidence, '../block-usability/responsive-editor-1024.png')});
     assert.deepEqual(errors, []);
   } finally {await page.close();}

@@ -1,3 +1,5 @@
+import {normalizeAppBase} from '../../../src/app-paths.js';
+const appBase=normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 import {test, before, after} from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -12,7 +14,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicRoot = path.resolve(root, '../../public');
 let server, origin, browser;
 const mime = {'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.json':'application/json','.wasm':'application/wasm'};
-const harness = mode => `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0"><iframe title="DUETBlox editor" src="/scratch/index.html${mode==='stage'?'?mode=stage':''}" style="border:0;width:100vw;height:100vh"></iframe><script>
+const harness = mode => `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0"><iframe title="DUETBlox editor" src="${appBase}scratch/index.html${mode==='stage'?'?mode=stage':''}" style="border:0;width:100vw;height:100vh"></iframe><script>
 window.messages=[];window.rpcCalls=[];window.addEventListener('message',event=>{
 const frame=document.querySelector('iframe');if(event.source!==frame.contentWindow||event.origin!==location.origin)return;
 const data=event.data;window.messages.push(data);
@@ -24,6 +26,8 @@ before(async () => {
   server = http.createServer(async (req,res) => {
     const url = new URL(req.url, 'http://local');
     if(url.pathname==='/harness'){res.writeHead(200,{'Content-Type':mime['.html']});res.end(harness(url.searchParams.get('mode')));return;}
+    if(!url.pathname.startsWith(appBase)){res.writeHead(404);res.end();return;}
+    url.pathname='/'+url.pathname.slice(appBase.length);
     let file = path.join(publicRoot, decodeURIComponent(url.pathname));
     if(!file.startsWith(publicRoot+path.sep)){res.writeHead(403);res.end();return;}
     try {if((await fs.stat(file)).isDirectory())file=path.join(file,'index.html');const data=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Access-Control-Allow-Origin':'*'});res.end(data);}catch{res.writeHead(404);res.end();}
