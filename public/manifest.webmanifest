@@ -1,0 +1,5 @@
+{
+ "id":"/", "name":"DUETBlox", "short_name":"DUETBlox", "description":"Create with blocks, learn machine learning and program boards — with offline learning tools.",
+ "start_url":"/", "scope":"/", "display":"standalone", "background_color":"#f7f9f6", "theme_color":"#146956", "lang":"en",
+ "icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]
+}

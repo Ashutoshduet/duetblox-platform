@@ -1,0 +1,39 @@
+DUETBlox — independent educational programming software
+
+DUETBlox source is distributed under AGPL-3.0-only. Copyright 2026 DUETBlox contributors.
+The DUET STEM logo is not included; the current DUETBlox mark is a temporary original design.
+
+Scratch editor and VM components: Scratch Foundation / Massachusetts Institute of Technology and contributors, AGPL-3.0-only. https://github.com/scratchfoundation/scratch-editor
+Scratch Blocks: Scratch Foundation and contributors, Apache-2.0. https://github.com/scratchfoundation/scratch-blocks
+The embedded editor includes its upstream notices in the scratch/ build directory. Scratch name, logo and character trademarks belong to the Scratch Foundation. DUETBlox is independent and is not endorsed by Scratch Foundation.
+
+Teachable Machine image library: Google LLC, Apache-2.0. https://github.com/googlecreativelab/teachablemachine-community
+TensorFlow.js: Google LLC and contributors, Apache-2.0. https://github.com/tensorflow/tfjs
+MobileNet pretrained model: Google / TensorFlow; downloaded by the Teachable Machine library when training begins.
+React and React DOM: Meta Platforms, Inc. and affiliates, MIT. https://github.com/facebook/react
+Lucide icons: ISC. https://lucide.dev/license
+JSZip: Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso; MIT or GPL-3.0. DUETBlox uses the MIT grant. https://github.com/Stuk/jszip
+Vite: MIT. https://github.com/vitejs/vite
+DM Sans and Manrope fonts: SIL Open Font License, supplied through Google Fonts. System fonts are used if unavailable.
+
+PictoBlox and associated names are reference products and trademarks of their respective owners. No PictoBlox code, mascot, logo, or proprietary media is included.
+Arduino, ESP32, micro:bit, LEGO, Quarky, Wizbot and other board names identify compatibility targets. A catalog entry does not establish tested support. See each board's status and hardware documentation.
+
+Full dependency source URLs and exact package versions are recorded in package-lock.json and apps/scratch-editor/package-lock.json. Applicable original copyright and license notices must be retained when redistributing this software.
+
+Version 0.2 additions:
+Teachable Machine pose library 0.8.6: Google LLC, Apache-2.0. https://github.com/googlecreativelab/teachablemachine-community
+TensorFlow.js speech-commands 0.4.0 and PoseNet 2.2.1: Google LLC and contributors, Apache-2.0. https://github.com/tensorflow/tfjs-models
+esptool-js 0.7.0: Espressif Systems and contributors, Apache-2.0. https://github.com/espressif/esptool-js
+webserial-flasher 1.0.1: Vie Lang, MIT. https://github.com/vielang/webserial-flasher
+DUETBlox adapts the serial transport and Mega bootloader protocol; original library source is pinned by package-lock.json. Protocol checks do not certify hardware behavior.
+Compiled live firmware uses Arduino AVR core 1.8.8, Servo 1.3.0, and Arduino ESP32 core 3.3.7. Original component licenses apply (including LGPL/GPL portions of Arduino AVR and LGPL/Apache/vendor components of ESP32); see /source/hardware/ and the preserved original license files. DUETBlox firmware source and build scripts are in the application source ZIP.
+The optional pose validation photograph originates from the Apache-2.0 TensorFlow.js PoseNet test fixtures. Its notice and original license are preserved at src/ml/pose/fixtures/ in the source download. It is a development fixture, not a user dataset or benchmark.
+
+Offline learning and media bundle (0.4.0):
+Original TensorFlow/Teachable Machine checkpoints are mirrored unmodified under /models/; exact upstream URLs, SHA-256, model configuration and license references are in /models/manifest.json and /models/NOTICE.txt.
+Scratch library media is mirrored unmodified under /scratch-media/. Its manifest records individual upstream URLs and checksums. See /scratch-media/NOTICE.txt for current Scratch support-material licensing guidance, attribution limitations and separate trademark restrictions. These assets are not DUETBlox branding.
+DM Sans and Manrope fonts are locally bundled under /fonts/, under SIL Open Font License 1.1. Original font license files and source URLs are included there.
+
+Pyodide 314.0.7 / CPython 3.14.2
+The Python workspace bundles the unchanged official core distribution. Pyodide uses MPL-2.0; CPython and bundled runtime components retain their respective upstream licenses. See /python/NOTICE.txt, /python/LICENSE-PYODIDE.txt and the other LICENSE files in /python/. Exact release, source commit, upstream source URLs and SHA-256 identities are included in /python/upstream-release.json and /python/runtime-manifest.json. DUETBlox's separate integration is AGPL-3.0-only.
