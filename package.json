@@ -8,7 +8,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "npm run build:editor && node scripts/package-scratch-media.mjs && node scripts/prepare-ml-models.mjs && node scripts/prepare-python-runtime.mjs && node scripts/build-studio-examples.mjs && node scripts/source-archive.mjs && vite build && node scripts/build-offline.mjs",
     "build:editor": "npm --prefix apps/scratch-editor run build",
-    "test": "node --test src/ml/*.test.js src/ml/text/*.test.js src/ml/audio/waveform.test.js src/junior/model.test.js src/junior/media.test.js src/hardware/tests/*.test.mjs src/hardware/*.test.js tools/windows-bridge/server.test.mjs src/programming/*.test.js src/workspace.test.js src/offline/*.test.js src/learn/*.test.js src/python/*.test.js src/ml/numbers/*.test.js src/classroom/*.test.js tools/classroom-server/*.test.mjs src/ml/objects/*.test.js",
+    "test": "node --test src/app-paths.test.js src/ml/*.test.js src/ml/text/*.test.js src/ml/audio/waveform.test.js src/junior/model.test.js src/junior/media.test.js src/hardware/tests/*.test.mjs src/hardware/*.test.js tools/windows-bridge/server.test.mjs src/programming/*.test.js src/workspace.test.js src/offline/*.test.js src/learn/*.test.js src/python/*.test.js src/ml/numbers/*.test.js src/classroom/*.test.js tools/classroom-server/*.test.mjs src/ml/objects/*.test.js",
     "preview": "vite preview --host 127.0.0.1",
     "start": "node scripts/serve-built.mjs",
     "offline:download": "node scripts/package-scratch-media.mjs --download && node scripts/prepare-ml-models.mjs --download && node scripts/prepare-python-runtime.mjs --download",

@@ -1,6 +1,6 @@
 # DUETBlox
 
-Live app: **https://duetblox.duetpower.in/**
+Live app: **https://duetpower.in/duetblox/**
 
 Public repository: **https://github.com/Ashutoshduet/duetblox-platform**
 
@@ -29,7 +29,11 @@ npm run dev
 
 `offline:download` needs internet to acquire missing checksum-pinned model/media/Python runtime files; `restore-source-packets.mjs` restores the exact dependency source archives and verifies their checksums. The app source and all DUETBlox changes are in this repository; a complete supplied pack is verified locally. Normal builds verify the bundled files and do not silently fetch missing ones. Keep the lock files, notices and local packs when copying the project.
 
-Open the printed localhost URL. Desktop Chrome or Edge supports the intended Web Serial path. Production serves the complete `dist/` folder at an HTTPS origin; `/scratch/`, `/scratch-media/`, `/models/`, `/python/`, `/firmware/`, `/source/`, `sw.js` and `offline-manifest.json` must remain available. Each browser origin has its own local data; transfer projects with `.duet` files.
+Open the printed localhost URL. Desktop Chrome or Edge supports the intended Web Serial path. Production serves the complete `dist/` folder at an HTTPS origin or a dedicated directory. All bundled resources must remain available beneath that deployment directory. Each browser origin has its own local data; transfer projects with `.duet` files.
+
+### Deploy under a directory
+
+For the DUETPower deployment, build with `DUETBLOX_BASE_PATH=/duetblox/ npm run build`, then serve the complete contents of `dist/` inside the website's new `duetblox/` directory. The editor, models, Python, downloads, PWA and offline worker use that same prefix. `npm start` detects the built prefix and prints the correct local URL. The default build still uses `/` for a dedicated app origin. See [directory deployment](docs/subdirectory-deployment.md) for packaging, isolation and verification.
 
 ## Use offline
 
