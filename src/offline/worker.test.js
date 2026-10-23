@@ -12,9 +12,9 @@ const origin='https://duetblox.test';
 const hash=data=>createHash('sha256').update(data).digest('hex');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 async function tickUntil(check){for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setImmediate(resolve));}throw new Error('Worker test condition did not settle');}
-function harness({responses={'/':'studio','/scratch/index.html':'scratch studio','/models/weights.bin':'weights'},mirrors={},fetchHook,openHook,scheduleTimeout=setTimeout}={}){
+function harness({basePath='/',responses={'/':'studio','/scratch/index.html':'scratch studio','/models/weights.bin':'weights'},mirrors={},fetchHook,openHook,scheduleTimeout=setTimeout}={}){
   const files=Object.entries(responses).map(([url,body])=>({url,bytes:Buffer.byteLength(body),sha256:hash(body),shell:url==='/'}));
-  const pack={version:'test-pack',files,bytes:files.reduce((n,f)=>n+f.bytes,0)};
+  const pack={version:'test-pack',basePath,files,bytes:files.reduce((n,f)=>n+f.bytes,0)};
   const stored=new Map(),listeners=new Map(),requests=[];
   const key=value=>new URL(typeof value==='string'?value:value.url,origin).href;
   const cache={
@@ -206,17 +206,28 @@ test('turning offline mode on during a local miss prevents an external fallback'
 test('offline build injects exactly the 23 pinned official shards and refuses changed or arbitrary mirror sources',async t=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'duet-offline-build-'));t.after(()=>rm(root,{recursive:true,force:true}));
  for(const directory of ['scripts','src/offline','dist/models/pose/resnet50'])await mkdir(path.join(root,directory),{recursive:true});
+ await writeFile(path.join(root,'src/app-paths.js'),await readFile(new URL('../app-paths.js',import.meta.url)));
+ await writeFile(path.join(root,'package.json'),JSON.stringify({type:'module'}));
  await writeFile(path.join(root,'scripts/build-offline.mjs'),await readFile(new URL('../../scripts/build-offline.mjs',import.meta.url)));
  await writeFile(path.join(root,'src/offline/worker.js'),workerSource);await writeFile(path.join(root,'dist/index.html'),'studio');
  const files=Array.from({length:23},(_,index)=>({path:`pose/resnet50/group1-shard${index+1}of23.bin`,source:`https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard${index+1}of23.bin`,bytes:7,sha256:hash('weights')}));
  for(const file of files)await writeFile(path.join(root,'dist/models',file.path),'weights');
  const lock=path.join(root,'scripts/ml-models.lock.json');await writeFile(lock,JSON.stringify({files}));
- const build=()=>spawnSync(process.execPath,[path.join(root,'scripts/build-offline.mjs')],{encoding:'utf8'});
+ const build=(base='/')=>spawnSync(process.execPath,[path.join(root,'scripts/build-offline.mjs')],{encoding:'utf8',env:{...process.env,DUETBLOX_BASE_PATH:base}});
  let result=build();assert.equal(result.status,0,result.stderr);
  const generated=await readFile(path.join(root,'dist/sw.js'),'utf8');
  const mirrors=JSON.parse(generated.match(/const MIRRORS = (.+);/)[1]);assert.equal(Object.keys(mirrors).length,23);
  const pack=JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8'));assert.equal(pack.files.length,25);assert.equal(pack.bytes,173);
  for(const file of files){const entry=mirrors[`/models/${file.path}`];assert.equal(entry.url,file.source);assert.equal(entry.bytes,7);assert.equal(entry.sha256,file.sha256);}
+ await writeFile(path.join(root,'dist/manifest.webmanifest'),JSON.stringify({id:'./',start_url:'./',scope:'./',icons:[{src:'./favicon.svg'}]}));
+ result=build('/duetblox/');assert.equal(result.status,0,result.stderr);
+ const mountedPack=JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8'));
+ assert.equal(mountedPack.basePath,'/duetblox/');assert.ok(mountedPack.files.every(file=>file.url.startsWith('/duetblox/')));
+ const mountedWorker=await readFile(path.join(root,'dist/sw.js'),'utf8');
+ const mountedMirrors=JSON.parse(mountedWorker.match(/const MIRRORS = (.+);/)[1]);
+ assert.ok(Object.keys(mountedMirrors).every(url=>url.startsWith('/duetblox/models/')));
+ const pwa=JSON.parse(await readFile(path.join(root,'dist/manifest.webmanifest'),'utf8'));
+ assert.equal(pwa.id,'/duetblox/');assert.equal(pwa.start_url,'/duetblox/');assert.equal(pwa.scope,'/duetblox/');assert.equal(pwa.icons[0].src,'/duetblox/favicon.svg');
  files[0].source='https://untrusted.example/arbitrary';await writeFile(lock,JSON.stringify({files}));
  result=build();assert.notEqual(result.status,0);assert.match(result.stderr,/mirror differs from the verified build/);
  files[0].source=officialMirror;await writeFile(lock,JSON.stringify({files}));await writeFile(path.join(root,'dist/models',files[0].path),'changed');
@@ -265,4 +276,23 @@ test('explicit offline policy is checked again before retrying an online mirrore
  await h.cache.put('/__duetblox_offline_state__',new Response(JSON.stringify({ready:false,offline:true})));
  retry();assert.equal((await pending).status,503);assert.equal(h.requests.length,1);
  assert.equal(await h.cache.match(mirroredFile),undefined);
+});
+
+
+test('a mounted offline pack never handles main website requests outside its exact directory',async()=>{
+ const h=harness({basePath:'/duetblox/',responses:{'/duetblox/':'studio','/duetblox/scratch/index.html':'scratch studio'}});
+ await h.finished('PREPARE');await h.finished('SET_OFFLINE',{enabled:true});
+ const count=h.requests.length;
+ for(const url of ['/','/index.html','/sw.js','/duetblox-other/','/duetblox','/api/orders'])for(const method of ['GET','POST'])assert.equal(await h.request(url,method),null,url);
+ assert.equal(await (await h.request('/duetblox/scratch/index.html?mode=stage')).text(),'scratch studio');
+ assert.equal((await h.request('/duetblox/missing')).status,503);
+ assert.equal((await h.request('https://outside.example/model')).status,503);
+ assert.equal(h.requests.length,count);
+ assert.ok(h.stored.has(origin+'/duetblox/__duetblox_offline_state__'));
+ assert.equal(h.stored.has(origin+'/__duetblox_offline_state__'),false);
+ assert.ok([...h.stored.keys()].every(url=>url.startsWith(origin+'/duetblox/')));
+});
+
+test('mounted worker refuses an inventory that escapes its directory',()=>{
+ for(const file of ['/index.html','/duetbloxish/asset','/duetblox/../index.html','https://other.example/duetblox/model'])assert.throws(()=>harness({basePath:'/duetblox/',responses:{[file]:'bad'}}),/escaped its application scope/);
 });

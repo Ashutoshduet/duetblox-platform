@@ -1,15 +1,21 @@
+import {appPath} from '../app-paths.js';
+
+export function isAppWorker(worker, origin = globalThis.location?.origin) {
+ try { return !!worker && !!origin && new URL(worker.scriptURL).href === new URL(appPath('sw.js'), origin).href; }
+ catch { return false; }
+}
 let registrationPromise;
 export async function offlineWorker(){
  if(!('serviceWorker' in navigator)||!window.isSecureContext)throw new Error('Offline storage needs desktop Chrome/Edge on HTTPS or localhost.');
  if(import.meta.env?.DEV)throw new Error('Offline preparation is available in the production build. Run npm run build, then npm start.');
- if(navigator.serviceWorker.controller){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});return navigator.serviceWorker.controller;}
- if(!registrationPromise)registrationPromise=navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(error=>{registrationPromise=null;throw error;});
+ if(isAppWorker(navigator.serviceWorker.controller)){navigator.serviceWorker.register(appPath('sw.js'),{scope:appPath('')}).catch(()=>{});return navigator.serviceWorker.controller;}
+ if(!registrationPromise)registrationPromise=navigator.serviceWorker.register(appPath('sw.js'),{scope:appPath('')}).catch(error=>{registrationPromise=null;throw error;});
  const registration=await registrationPromise;
  // Use the worker already controlling this release. Never activate a replacement
  // while a student has an unsaved project in another window.
- if(navigator.serviceWorker.controller)return navigator.serviceWorker.controller;
- if(registration.active)return registration.active;
- return new Promise((resolve,reject)=>{const worker=registration.installing||registration.waiting;if(!worker){reject(new Error('Offline worker is not ready. Reload and try again.'));return;}
+ if(isAppWorker(navigator.serviceWorker.controller))return navigator.serviceWorker.controller;
+ if(isAppWorker(registration.active))return registration.active;
+ return new Promise((resolve,reject)=>{const worker=registration.installing||registration.waiting;if(!isAppWorker(worker)){reject(new Error('Offline worker is not ready. Reload and try again.'));return;}
  const timeout=setTimeout(()=>reject(new Error('Offline setup took too long. Reconnect and try again.')),90000);
  const check=()=>{if(worker.state==='activated'){clearTimeout(timeout);resolve(worker);}else if(worker.state==='redundant'){clearTimeout(timeout);reject(new Error('Offline setup could not verify this build. Reload and try again.'));}};worker.addEventListener('statechange',check);check();});
 }

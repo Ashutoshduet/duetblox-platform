@@ -1,8 +1,11 @@
 /* DUETBlox offline worker. Manifest is injected from the final, hashed build. */
 const PACK = __DUET_OFFLINE_MANIFEST__;
 const MIRRORS = __DUET_OFFLINE_MIRRORS__;
-const CACHE = `duetblox-offline-${PACK.version}`;
-const META = '/__duetblox_offline_state__';
+const BASE = PACK.basePath || '/';
+const CACHE = `duetblox-offline-${encodeURIComponent(BASE)}-${PACK.version}`;
+const META = `${BASE}__duetblox_offline_state__`;
+// A malformed build must never store or intercept another application's paths.
+if (!BASE.startsWith('/') || !BASE.endsWith('/') || BASE.startsWith('//') || PACK.files.some(file => !file.url.startsWith(BASE) || !new URL(file.url, self.location.origin).pathname.startsWith(BASE) || new URL(file.url, self.location.origin).origin !== self.location.origin)) throw new Error('Offline pack escaped its application scope.');
 const known = new Map(PACK.files.map(f => [new URL(f.url,self.location.origin).href,f]));
 let job = null;
 const state = async () => { const r=await (await caches.open(CACHE)).match(META); return r?await r.json():{ready:false,offline:false}; };
@@ -90,6 +93,9 @@ self.addEventListener('message',event=>{
 self.addEventListener('fetch',event=>{
  const request=event.request;
  const url=new URL(request.url),normalized=new URL(url.pathname,self.location.origin).href;
+ // Scoped pages may request same-origin website resources. Leave them entirely
+ // to the browser/main site, even when DUETBlox's offline switch is enabled.
+ if(url.origin===self.location.origin&&!url.pathname.startsWith(BASE))return;
  // Local classroom requests are never cached, even when this app is installed.
  // Literal private IPs avoid treating an arbitrary external hostname as a LAN service.
  const host=url.hostname,parts=host.split('.').map(Number);
