@@ -1,0 +1,43 @@
+.virtual-board-lab{margin:0 14px 12px;padding:16px;border:1px solid #8bb8da;border-radius:14px;background:#f3f9ff;color:#20334d;font-size:13px}
+.virtual-board-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.virtual-board-heading h2{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0;font-size:16px}
+.virtual-board-heading p{margin:6px 0 0;font-size:12px;color:#4d6380}
+.virtual-badge{font-size:10px;letter-spacing:.06em;color:#15527b;background:#d5ebfb;padding:4px 6px;border-radius:5px}
+.virtual-actions{display:flex;gap:6px;flex-wrap:wrap}
+.virtual-actions button{display:inline-flex;align-items:center;gap:6px;border:1px solid #bad0e4;border-radius:7px;padding:7px 9px;background:white;color:#253e5e;font-size:12px;cursor:pointer}
+.virtual-actions button:disabled{opacity:.5;cursor:wait}
+.virtual-board-scope{line-height:1.6;color:#4d6380;margin:12px 0}
+.virtual-lab-columns{display:grid;grid-template-columns:minmax(210px,1fr) minmax(0,1.5fr);gap:16px}
+.virtual-inputs{min-width:0;margin:0;padding:12px;border:1px solid #cadbec;border-radius:10px;background:#fff}
+.virtual-inputs legend{padding:0 5px;font-weight:700}
+.virtual-input-row{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.virtual-input-row label{display:flex;flex:1;flex-direction:column;gap:5px;font-size:12px;font-weight:600}
+.virtual-input-row select{min-width:80px;max-width:100%;border:1px solid #b9ccdf;border-radius:6px;background:white;padding:7px;color:#223a57;font:inherit}
+.virtual-inputs small{display:block;font-size:11px;line-height:1.5;color:#566a80;margin-top:8px}
+.virtual-analog-input{margin-top:16px;border-top:1px solid #e1eaf3;padding-top:12px}
+.virtual-analog-input output{font-variant-numeric:tabular-nums;padding-bottom:7px;font-weight:700}
+.virtual-analog-input input[type=range]{width:100%;margin:12px 0 0;accent-color:#2478b7}
+.virtual-input-note{line-height:1.5;color:#566a80}
+.virtual-outputs h3{margin:0 0 10px;font-size:13px}
+.virtual-outputs h3 span{display:inline-block;margin-left:5px;background:#dbeafa;border-radius:50%;padding:2px 6px;font-size:11px}
+.virtual-outputs ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+.virtual-pin{border:1px solid #ccdfef;border-radius:9px;background:#fff;padding:10px}
+.virtual-pin>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.virtual-pin>div:first-child>span{font-size:10px;color:#506b87}
+.virtual-pin output{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.virtual-led{display:inline-block;width:12px;height:12px;border-radius:50%;background:#d5dce5;border:1px solid #a7b5c5}
+.virtual-led.on{background:#15a77b;border-color:#09825e;box-shadow:0 0 0 3px #def8ee}
+.virtual-pin progress{width:100%;height:7px;accent-color:#287eb8;margin:9px 0 0}
+.virtual-pin>small,.virtual-servo small{display:block;font-size:10px;color:#60718a;margin-top:8px}
+.virtual-servo{height:35px;position:relative;margin-top:5px;padding-left:35px;display:flex;align-items:center}
+.virtual-servo>span{position:absolute;left:15px;top:17px;width:21px;height:4px;background:#9a66cf;border-radius:3px;transform-origin:0 50%}
+.virtual-servo>span:before{content:'';position:absolute;left:-3px;top:-2px;width:8px;height:8px;border-radius:50%;background:#694297}
+.virtual-empty{border:1px dashed #b7cee3;border-radius:9px;padding:18px;line-height:1.6;color:#5c7189;margin:0}
+.virtual-status{display:flex;justify-content:space-between;gap:12px;padding-top:12px;margin-top:12px;border-top:1px solid #d6e5f2;color:#4c6380;font-size:11px;line-height:1.5}
+.virtual-status small{white-space:nowrap;font-size:11px}
+.virtual-limits{margin-top:10px;font-size:11px;color:#526880;line-height:1.6}
+.virtual-limits summary{cursor:pointer;font-weight:700}
+.virtual-limits p{margin:7px 0}
+.virtual-error{background:#fff0ef;color:#9a2f25;border:1px solid #efc1bc;border-radius:7px;padding:9px;line-height:1.5}
+.virtual-board-lab :focus-visible{outline:2px solid #146aab;outline-offset:3px}
+@media(max-width:760px){.virtual-lab-columns{grid-template-columns:1fr}.virtual-board-lab{margin:0 8px 10px;padding:12px}.virtual-status{flex-direction:column;gap:4px}}
