@@ -1,3 +1,4 @@
+import {editorAppPath} from './app-path';
 import {cacheDefaultProject, addAssetStore} from './default-project';
 import {createBridge} from './bridge';
 import {registerDuetExtensions} from './extensions';
@@ -29,7 +30,7 @@ async function editor() {
     // Projects are saved through the official Download API / File menu and the
     // parent shell. No Scratch account or write endpoint is used.
     saveProject: async () => { throw new Error('Use Save to your computer to save this DUETBlox project.'); },
-    getLibraryAssetUrl: (id, format) => `/scratch-media/${id}.${format}`
+    getLibraryAssetUrl: (id, format) => editorAppPath(`scratch-media/${id}.${format}`)
   }};
   const state = new GUI.EditorState({locale: 'en', showTelemetryModal: false}, () => config);
   const disposeResponsiveStage = createResponsiveStage(state, GUI.setStageSize);

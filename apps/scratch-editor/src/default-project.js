@@ -1,3 +1,4 @@
+import {editorAppPath} from './app-path';
 export const duetSprite = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="112" viewBox="0 0 100 112"><path d="M50 12V3" stroke="#4b5cea" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="5" r="5" fill="#ffbf48"/><rect x="14" y="17" width="72" height="66" rx="22" fill="#6376f5"/><path d="M22 27h56v30c0 16-56 16-56 0z" fill="#8290ff"/><rect x="25" y="36" width="50" height="25" rx="12" fill="#212b56"/><circle cx="38" cy="48" r="5" fill="#fff"/><circle cx="62" cy="48" r="5" fill="#fff"/><path d="M42 70h16" stroke="#fff" stroke-width="4" stroke-linecap="round"/><rect x="3" y="43" width="12" height="30" rx="6" fill="#ffbf48"/><rect x="85" y="43" width="12" height="30" rx="6" fill="#ffbf48"/><rect x="23" y="81" width="18" height="23" rx="9" fill="#4b5cea"/><rect x="59" y="81" width="18" height="23" rx="9" fill="#4b5cea"/></svg>`;
 export const blankBackdrop = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360"><path fill="#fff" d="M0 0h480v360H0z"/></svg>`;
 
@@ -21,5 +22,5 @@ export function cacheDefaultProject(storage) {
 
 export function addAssetStore(storage) {
   storage.addWebStore([storage.AssetType.ImageVector, storage.AssetType.ImageBitmap, storage.AssetType.Sound],
-    asset => `/scratch-media/${asset.assetId}.${asset.dataFormat}`);
+    asset => editorAppPath(`scratch-media/${asset.assetId}.${asset.dataFormat}`));
 }
