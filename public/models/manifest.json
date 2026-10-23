@@ -1,0 +1,342 @@
+{
+  "format": "duetblox-local-ml-models",
+  "version": 1,
+  "captured": "2026-10-18",
+  "runtime": {
+    "@tensorflow/tfjs": "1.3.1",
+    "@teachablemachine/image": "0.8.5",
+    "@teachablemachine/pose": "0.8.6",
+    "@tensorflow-models/speech-commands": "0.4.0",
+    "@tensorflow-models/posenet": "2.2.1"
+  },
+  "models": [
+    {
+      "id": "image-mobilenet-v2-035",
+      "path": "image/mobilenet-v2-035/model.json",
+      "source": "https://storage.googleapis.com/teachable-machine-models/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_0.35_224_no_top/model.json"
+    },
+    {
+      "id": "sound-speech-18w",
+      "path": "sound/speech-18w/model.json",
+      "source": "https://storage.googleapis.com/tfjs-models/tfjs/speech-commands/v0.4/browser_fft/18w/model.json"
+    },
+    {
+      "id": "pose-mobilenet-50-stride8",
+      "path": "pose/mobilenet-50/model-stride8.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/050/model-stride8.json"
+    },
+    {
+      "id": "pose-mobilenet-50-stride16",
+      "path": "pose/mobilenet-50/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/050/model-stride16.json"
+    },
+    {
+      "id": "pose-mobilenet-75-stride8",
+      "path": "pose/mobilenet-75/model-stride8.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride8.json"
+    },
+    {
+      "id": "pose-mobilenet-75-stride16",
+      "path": "pose/mobilenet-75/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json"
+    },
+    {
+      "id": "pose-mobilenet-100-stride8",
+      "path": "pose/mobilenet-100/model-stride8.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/model-stride8.json"
+    },
+    {
+      "id": "pose-mobilenet-100-stride16",
+      "path": "pose/mobilenet-100/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/model-stride16.json"
+    },
+    {
+      "id": "pose-resnet50-stride16",
+      "path": "pose/resnet50/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/model-stride16.json"
+    },
+    {
+      "id": "pose-resnet50-stride32",
+      "path": "pose/resnet50/model-stride32.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/model-stride32.json"
+    }
+  ],
+  "files": [
+    {
+      "path": "image/mobilenet-v2-035/group1-shard1of1.bin",
+      "source": "https://storage.googleapis.com/teachable-machine-models/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_0.35_224_no_top/group1-shard1of1.bin",
+      "bytes": 1640832,
+      "sha256": "d366835afb87a9a6915084f00635339c2c8e137760cd891ab234340194ca1913"
+    },
+    {
+      "path": "image/mobilenet-v2-035/model.json",
+      "source": "https://storage.googleapis.com/teachable-machine-models/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_0.35_224_no_top/model.json",
+      "bytes": 100507,
+      "sha256": "743ac7298e845e2c2ef2c361cb2dad84b8bfc67ccbef1fefc20146d529b17030"
+    },
+    {
+      "path": "LICENSE-teachable-machine.txt",
+      "source": "https://raw.githubusercontent.com/googlecreativelab/teachablemachine-community/master/LICENSE.txt",
+      "bytes": 11337,
+      "sha256": "6fe0c98da1c13dcf202652afbac0db0ecdea8ebec5a6855f149d1e033d93fbb0"
+    },
+    {
+      "path": "LICENSE-tensorflow.txt",
+      "source": "https://raw.githubusercontent.com/tensorflow/tfjs-models/master/LICENSE",
+      "bytes": 11357,
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+    },
+    {
+      "path": "pose/mobilenet-100/group1-shard1of4.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/group1-shard1of4.bin",
+      "bytes": 4194304,
+      "sha256": "b10a412588e5895994a311d820dc742e19da2bff9a0db8502d17b6d5371bb343"
+    },
+    {
+      "path": "pose/mobilenet-100/group1-shard2of4.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/group1-shard2of4.bin",
+      "bytes": 4194304,
+      "sha256": "17bcb8cab1b2f61832bc38d7e059ca001d3e0c5af068c068fe29ebe3226eea24"
+    },
+    {
+      "path": "pose/mobilenet-100/group1-shard3of4.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/group1-shard3of4.bin",
+      "bytes": 4194304,
+      "sha256": "d0c317c2fdf0c970ec8eabfbf0624fcefcec63754e9c918b03603e9e93bfb8da"
+    },
+    {
+      "path": "pose/mobilenet-100/group1-shard4of4.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/group1-shard4of4.bin",
+      "bytes": 672716,
+      "sha256": "e8cd0f42e6dbeed67291760c6c66c2d648540b69d33889092a81e315bef0833f"
+    },
+    {
+      "path": "pose/mobilenet-100/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/model-stride16.json",
+      "bytes": 47074,
+      "sha256": "a41315053f8902501c4bc8a911381895711de50c4e845b1b06671bb1bf34ac32"
+    },
+    {
+      "path": "pose/mobilenet-100/model-stride8.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/100/model-stride8.json",
+      "bytes": 47074,
+      "sha256": "b5a09af88c13c590de2e8369f9b6a2c5fffc5597cf5ca283e0c0ecf0f6320c61"
+    },
+    {
+      "path": "pose/mobilenet-50/group1-shard1of1.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/050/group1-shard1of1.bin",
+      "bytes": 2309836,
+      "sha256": "2cd0da2cbd85a1dd02312b2622f42b35019b607ff5c40c3cbb3ecb9302fc54d9"
+    },
+    {
+      "path": "pose/mobilenet-50/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/050/model-stride16.json",
+      "bytes": 49696,
+      "sha256": "d6e1cf4f40aca4ad9c6b13ec856e938175c46cc72ce3a7b8864e821e71a337fc"
+    },
+    {
+      "path": "pose/mobilenet-50/model-stride8.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/050/model-stride8.json",
+      "bytes": 49696,
+      "sha256": "ce9a338f380c8a3a3f1c21366766c079764349d72ccf22978d7772f6ca20e980"
+    },
+    {
+      "path": "pose/mobilenet-75/group1-shard1of2.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/group1-shard1of2.bin",
+      "bytes": 4194304,
+      "sha256": "ce6afc62f89782d43139fab76c641b281a82dee2cd2759aa036c4b28aea16439"
+    },
+    {
+      "path": "pose/mobilenet-75/group1-shard2of2.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/group1-shard2of2.bin",
+      "bytes": 838476,
+      "sha256": "2a35b8cfb86eb50928931e03dc30c0972fdd375f148b177ee40676b81a17692d"
+    },
+    {
+      "path": "pose/mobilenet-75/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride16.json",
+      "bytes": 49720,
+      "sha256": "dd63bf2d3b983e8c80020749f135164beda00a33374c8a7be230b9598f24f798"
+    },
+    {
+      "path": "pose/mobilenet-75/model-stride8.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/mobilenet/float/075/model-stride8.json",
+      "bytes": 49720,
+      "sha256": "e9d76d67eb364b343c60195a89029d558d625c93323753c333a26ab0aa66128f"
+    },
+    {
+      "path": "pose/resnet50/group1-shard10of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard10of23.bin",
+      "bytes": 4194304,
+      "sha256": "e4f1079b78b0b339a3f5246672e005da5c1515d47d488e458f3bdd865c5ce460"
+    },
+    {
+      "path": "pose/resnet50/group1-shard11of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard11of23.bin",
+      "bytes": 4194304,
+      "sha256": "2df4e109fa332c2f580ff6b4fa4316562b093a277d66b48054d2abb73ddf4b03"
+    },
+    {
+      "path": "pose/resnet50/group1-shard12of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard12of23.bin",
+      "bytes": 4194304,
+      "sha256": "bad362cf953524a67d58f8e4c8472955d972543aee6e58462433196dcecdb3b6"
+    },
+    {
+      "path": "pose/resnet50/group1-shard13of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard13of23.bin",
+      "bytes": 4194304,
+      "sha256": "ad4975c7343b57b672b7285961c97483f2ef5e31c848729f2bf41cd7c40d37e0"
+    },
+    {
+      "path": "pose/resnet50/group1-shard14of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard14of23.bin",
+      "bytes": 4194304,
+      "sha256": "62f069532dd7bf8d2f5cb40981208c3da9f3f84ee8faa4326d6e865f43fd2059"
+    },
+    {
+      "path": "pose/resnet50/group1-shard15of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard15of23.bin",
+      "bytes": 4194304,
+      "sha256": "d7b5feb9c4de543ec674e742b59e51be21fd2c3272901ff9f5be595d64c2350b"
+    },
+    {
+      "path": "pose/resnet50/group1-shard16of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard16of23.bin",
+      "bytes": 4194304,
+      "sha256": "816b5b69fc5ec1be37c2ecbf14b2d47e460c4f0640aa0a923b5c567f6d246b31"
+    },
+    {
+      "path": "pose/resnet50/group1-shard17of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard17of23.bin",
+      "bytes": 4194304,
+      "sha256": "f49db18482b9812627416b72d43b7d7f5125206860706ae2ba10b721035f9f60"
+    },
+    {
+      "path": "pose/resnet50/group1-shard18of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard18of23.bin",
+      "bytes": 4194304,
+      "sha256": "9cf375fea327203fe258ba07b32d6d3f4e5ed123e9de9124cbff14a287b1c79e"
+    },
+    {
+      "path": "pose/resnet50/group1-shard19of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard19of23.bin",
+      "bytes": 4194304,
+      "sha256": "ab8dc4a18391bb66a5de236869d4a9362237c2e90296ac0babeaec43bb34d9c8"
+    },
+    {
+      "path": "pose/resnet50/group1-shard1of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard1of23.bin",
+      "bytes": 4194304,
+      "sha256": "85bd5f72871271c0a85695e8d1c906b2152707545c066e68eb1b38fc53771654"
+    },
+    {
+      "path": "pose/resnet50/group1-shard20of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard20of23.bin",
+      "bytes": 4194304,
+      "sha256": "02a04c344c4260f5828e816a5b79433674b9004fe19e11b198fa89d85e6f2c29"
+    },
+    {
+      "path": "pose/resnet50/group1-shard21of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard21of23.bin",
+      "bytes": 4194304,
+      "sha256": "7721b746047a5d4cccb73dfb18702ebbb57641d59aa6a3a56ba60a649223a42b"
+    },
+    {
+      "path": "pose/resnet50/group1-shard22of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard22of23.bin",
+      "bytes": 4194304,
+      "sha256": "f6b771f3cbc92b9adbc6f0074b601a54bb71abc0c8440934519162d62940f21b"
+    },
+    {
+      "path": "pose/resnet50/group1-shard23of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard23of23.bin",
+      "bytes": 2593804,
+      "sha256": "eacb32f1556f7878c9d44d84c6518f454db176f8455c48272f1e3a41853d2125"
+    },
+    {
+      "path": "pose/resnet50/group1-shard2of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard2of23.bin",
+      "bytes": 4194304,
+      "sha256": "cbcaa811fd50e6a52ef2551a1be64df14c22b869d757c2badc8e6838d2fc8ac4"
+    },
+    {
+      "path": "pose/resnet50/group1-shard3of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard3of23.bin",
+      "bytes": 4194304,
+      "sha256": "34db8636f493301ff93ed5471f1373728b9339dd1f3cee45013263d01449c5ec"
+    },
+    {
+      "path": "pose/resnet50/group1-shard4of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard4of23.bin",
+      "bytes": 4194304,
+      "sha256": "bef7dd490b2ee65b2b3364e669f9856334b095ee9b497a4cec48ca6712f97b3e"
+    },
+    {
+      "path": "pose/resnet50/group1-shard5of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard5of23.bin",
+      "bytes": 4194304,
+      "sha256": "6dbd309d9294ba83a1bdf886faf9b636d5cccfe67309128eba94d547cc2a7e62"
+    },
+    {
+      "path": "pose/resnet50/group1-shard6of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard6of23.bin",
+      "bytes": 4194304,
+      "sha256": "0629321b4611bc4494f8c6ad5e94bb19ceaa99858cb325cd4298b1cfab72a09c"
+    },
+    {
+      "path": "pose/resnet50/group1-shard7of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard7of23.bin",
+      "bytes": 4194304,
+      "sha256": "bd0dc2161c5368eba92f01012de3975d1abe42c8e044119390ece0a1b7d099c9"
+    },
+    {
+      "path": "pose/resnet50/group1-shard8of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard8of23.bin",
+      "bytes": 4194304,
+      "sha256": "fa63f4d081722aae850df087ea492683ddc629e587c60a99e65f7b6e167c2404"
+    },
+    {
+      "path": "pose/resnet50/group1-shard9of23.bin",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/group1-shard9of23.bin",
+      "bytes": 4194304,
+      "sha256": "3a4b87e294b79c48f00da706554aa8ca4f895eead742364beecf7301b735b985"
+    },
+    {
+      "path": "pose/resnet50/model-stride16.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/model-stride16.json",
+      "bytes": 103357,
+      "sha256": "4cd9790f6f3d4bbf511c5cbbfe5bb9ee83073694b31c99472270eae1d3c6427a"
+    },
+    {
+      "path": "pose/resnet50/model-stride32.json",
+      "source": "https://storage.googleapis.com/tfjs-models/savedmodel/posenet/resnet50/float/model-stride32.json",
+      "bytes": 103357,
+      "sha256": "4866c6b076914f36722df510b78e3952821aea8601dd8439b4e0c866d4bf50fa"
+    },
+    {
+      "path": "sound/speech-18w/group1-shard1of2",
+      "source": "https://storage.googleapis.com/tfjs-models/tfjs/speech-commands/v0.4/browser_fft/18w/group1-shard1of2",
+      "bytes": 4194304,
+      "sha256": "79b7ef9d7577b333ee39b0d6e8dfebdb03be559a645bc389307ef84da414a30b"
+    },
+    {
+      "path": "sound/speech-18w/group1-shard2of2",
+      "source": "https://storage.googleapis.com/tfjs-models/tfjs/speech-commands/v0.4/browser_fft/18w/group1-shard2of2",
+      "bytes": 1680432,
+      "sha256": "129b9a7d501f81e62710d494efcba67ed98b3f3032dd28d7fe20cbc8cd5bee1f"
+    },
+    {
+      "path": "sound/speech-18w/metadata.json",
+      "source": "https://storage.googleapis.com/tfjs-models/tfjs/speech-commands/v0.4/browser_fft/18w/metadata.json",
+      "bytes": 203,
+      "sha256": "06f92997a0f6b3e5f11d70251222350f1e0f6717280f7edd151d4001482665ac"
+    },
+    {
+      "path": "sound/speech-18w/model.json",
+      "source": "https://storage.googleapis.com/tfjs-models/tfjs/speech-commands/v0.4/browser_fft/18w/model.json",
+      "bytes": 5466,
+      "sha256": "be053f904fe26d1fab2be824d943e936d9f04c9ea3d238d3c58fa2a6225b1ef7"
+    }
+  ]
+}

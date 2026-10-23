@@ -1,0 +1,28 @@
+DUETBlox local pretrained model pack
+Captured 18 October 2026; see manifest.json for every original URL, byte length,
+and SHA-256 digest. Model JSON and binary files are unmodified upstream bytes.
+
+The image checkpoint is the MobileNet V2 alpha 0.35, 224-pixel, no-top model
+referenced by @teachablemachine/image 0.8.5. Original host:
+https://storage.googleapis.com/teachable-machine-models/
+Upstream implementation and notices:
+https://github.com/googlecreativelab/teachablemachine-community
+Copyright 2019 Google LLC. Apache License 2.0 text: LICENSE-teachable-machine.txt.
+
+The sound checkpoint is speech-commands v0.4 BROWSER_FFT 18w, referenced by
+@tensorflow-models/speech-commands 0.4.0. The pose checkpoints are float32
+PoseNet MobileNetV1 and ResNet50 from @tensorflow-models/posenet 2.2.1.
+Original host: https://storage.googleapis.com/tfjs-models/
+Upstream implementation and notices:
+https://github.com/tensorflow/tfjs-models
+Apache License 2.0 text: LICENSE-tensorflow.txt.
+
+These fixed pretrained weights are used as feature extractors. Learners' examples,
+trained classifiers, labels, and evaluation results are not included in this pack.
+DUETBlox makes no claim to have trained the pretrained backbones and no claim of
+Google or TensorFlow endorsement. Training and inference are educational tools;
+accuracy depends on examples and must be evaluated on separate data.
+
+Regeneration: node scripts/prepare-ml-models.mjs --download
+Verification without internet: node scripts/prepare-ml-models.mjs
+A hash mismatch is an error; the restoration script does not accept changed weights.
