@@ -1,6 +1,8 @@
+import {appPath} from '../app-paths.js';
+
 // Local copies of the exact upstream checkpoints used by the pinned TM runtimes.
 // Asset hashes and original URLs: public/models/manifest.json.
-const MODEL_ROOT='/models/';
+const MODEL_ROOT=appPath('/models/');
 export const IMAGE_MODEL_OPTIONS=Object.freeze({
   checkpointUrl:`${MODEL_ROOT}image/mobilenet-v2-035/model.json`,
   trainingLayer:'out_relu'
