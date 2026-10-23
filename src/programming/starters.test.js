@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {addStarter} from './starters.js';
+import {boardRegistry} from '../hardware/boards.js';
+import {exportArduino} from '../hardware/generator.js';
+const project={targets:[{isStage:true,name:'Stage',blocks:{}},{isStage:false,name:'Original',blocks:{keep:{opcode:'looks_show'}},costumes:[{name:'original',assetId:'test'}]}],extensions:[]};
+test('adding examples preserves original programs/assets and creates unique sprites',()=>{const snapshot=structuredClone(project),first=addStarter(project,'motion');assert.deepEqual(project,snapshot);assert.deepEqual(first.project.targets.slice(0,2),snapshot.targets);const second=addStarter(first.project,'motion');assert.equal(second.project.targets.at(-1).name,'My first animation 2');assert.deepEqual(second.project.targets.at(-1).costumes,project.targets[1].costumes);});
+test('hardware examples use each implemented board pin profile and generate C++',()=>{for(const board of boardRegistry.filter(b=>b.live))for(const kind of ['blink',...(board.analogPins.length?['sensor']:[])]){const {project:result,pin}=addStarter(project,kind,board.id);assert.ok(board.outputPins.includes(pin));result.targets[1].blocks={};const compiled=exportArduino(result,{boardId:board.id});assert.equal(compiled.ok,true,JSON.stringify(compiled.diagnostics));}});
+test('unsupported examples fail explicitly without touching the project',()=>{const snapshot=structuredClone(project);assert.throws(()=>addStarter(project,'sensor','esp32-cam'),/no analog/);assert.throws(()=>addStarter(project,'invalid'),/available/);assert.deepEqual(project,snapshot);});
+test('animation does not depend on the selected hardware profile',()=>{const result=addStarter(project,'motion','quarky');assert.equal(result.project.targets.at(-1).name,'My first animation');assert.equal(result.pin,undefined);});
