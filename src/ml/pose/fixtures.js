@@ -1,0 +1,4 @@
+/** Deterministic real-image fixture augmentation for browser integration checks.
+ * The supplied image is decoded through the same upload path as user photos.
+ * A mirrored posture and small translation variations form two classes. */
+export function makePoseImageFixture(image,{samples=8}={}){return {kind:'duetblox-pose-dataset',version:1,classes:[false,true].map((mirrored,index)=>({id:`pose-fixture-${index}`,name:mirrored?'Mirrored posture':'Original posture',samples:Array.from({length:samples},(_,i)=>{const canvas=document.createElement('canvas');canvas.width=canvas.height=400;const ctx=canvas.getContext('2d');ctx.fillStyle='#eee';ctx.fillRect(0,0,400,400);if(mirrored){ctx.translate(400,0);ctx.scale(-1,1);}ctx.drawImage(image,(i%3)-1,(i%2)-.5,400,400);return canvas.toDataURL('image/jpeg',.94);})}))};}
