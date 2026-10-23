@@ -5,6 +5,8 @@ import {createRequire} from 'node:module';
 import {patchHullFormat} from './hardening.mjs';
 import {patchFaceSensingAssets, faceSensingAssetNames, faceSensingSolutionPath} from './face-sensing-assets.mjs';
 import {patchSandboxDelivery} from './sandbox-delivery.mjs';
+import {appPath, normalizeAppBase} from '../../../src/app-paths.js';
+const appBase = normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.resolve(root, '../../public/scratch');
@@ -21,8 +23,8 @@ for (const name of ['scratch-vm','scratch-render','scratch-storage','scratch-svg
 // Upstream standalone distributions bake their lazy-chunk path as '/'.
 // This app intentionally hosts them below /scratch; patch only that verified
 // webpack runtime assignment in the copied distributions, never npm sources.
-for (const [file, base] of [['scratch-gui-standalone.js', '/scratch/'],
-  ...['scratch-vm.js','scratch-render.min.js','scratch-storage.js','scratch-svg-renderer.js'].map(name => [`vendor/${name}`, '/scratch/vendor/'])]) {
+for (const [file, base] of [['scratch-gui-standalone.js', appPath('scratch/', appBase)],
+  ...['scratch-vm.js','scratch-render.min.js','scratch-storage.js','scratch-svg-renderer.js'].map(name => [`vendor/${name}`, appPath('scratch/vendor/', appBase)])]) {
   const target = path.join(output, file);
   const text = await fs.readFile(target, 'utf8');
   const pattern = /\.p\s*=\s*"\/"/g;
@@ -32,7 +34,7 @@ for (const [file, base] of [['scratch-gui-standalone.js', '/scratch/'],
   adjusted = patchSandboxDelivery(adjusted, file);
   if (file === 'scratch-gui-standalone.js') adjusted = adjusted.replaceAll('"Scratch Project"', '"DUETBlox Project"');
   if (file === 'scratch-gui-standalone.js' || file === 'vendor/scratch-render.min.js') adjusted = patchHullFormat(adjusted, file);
-  if (file === 'scratch-gui-standalone.js' || file === 'vendor/scratch-vm.js') adjusted = patchFaceSensingAssets(adjusted, file);
+  if (file === 'scratch-gui-standalone.js' || file === 'vendor/scratch-vm.js') adjusted = patchFaceSensingAssets(adjusted, file, appBase);
   await fs.writeFile(target, adjusted);
 }
 for (const name of faceSensingAssetNames) {
@@ -55,6 +57,8 @@ for (const file of ['editor.css','duetblox-logo.svg']) await fs.copyFile(path.jo
 await fs.writeFile(path.join(output, 'index.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DUETBlox · Block editor</title><link rel="stylesheet" href="./editor.css"></head><body><main id="app"><p style="padding:24px;color:#53536b">Opening DUETBlox…</p></main><script src="./duetblox-editor.js"></script></body></html>`);
 const webpack = require('webpack');
 const config = require('../webpack.config.cjs');
+config.output.publicPath = appPath('scratch/', appBase);
+config.plugins = [...(config.plugins || []), new webpack.DefinePlugin({__DUETBLOX_BASE_PATH__: JSON.stringify(appBase)})];
 await new Promise((resolve, reject) => webpack(config, (error, stats) => {
   if (error || stats.hasErrors()) reject(error || new Error(stats.toString({all: false, errors: true})));
   else { console.log(stats.toString({all: false, timings: true, assets: true, warnings: true})); resolve(); }

@@ -1,3 +1,4 @@
+import {appPath} from '../../../src/app-paths.js';
 /**
  * The pinned Scratch 15.2.0 distributions load Face Sensing independently of
  * webpack's public path. DUETBlox hosts the official MediaPipe files below
@@ -31,13 +32,13 @@ const successByFile = {
   'vendor/scratch-vm.js': '.then(A=>{this._faceDetector=A,this.runtime.ioDevices&&this._loop()})'
 };
 
-export function patchFaceSensingAssets(source, file) {
+export function patchFaceSensingAssets(source, file, base = '/') {
   const fallback = fallbackByFile[file];
   const success = successByFile[file];
   if (!fallback || source.split(upstreamPath).length !== 2 || source.split(fallback).length !== 2 || source.split(success).length !== 2) {
     throw new Error(`Face Sensing offline paths did not match the pinned ${file} bundle exactly.`);
   }
-  const adjusted = source.replace(upstreamPath, `solutionPath:${JSON.stringify(faceSensingSolutionPath)}`)
+  const adjusted = source.replace(upstreamPath, `solutionPath:${JSON.stringify(appPath(faceSensingSolutionPath, base))}`)
     .replace(fallback, '')
     .replace(success, `${success}.catch(()=>{this.runtime.emit("EXTENSION_DATA_LOADING",false),this.runtime.emit("DUET_EXTENSION_ERROR",{extension:"faceSensing",message:${JSON.stringify(faceSensingFailureMessage)}})})`);
   if (adjusted.includes(cloudPrefix) || adjusted.includes(upstreamPath)) {
