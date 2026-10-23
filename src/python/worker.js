@@ -1,7 +1,8 @@
+import {appPath} from '../app-paths.js';
 import {inputLines,validatePythonProject} from './project.js';
 
 // Only the pinned local core distribution is loaded. No import-based package downloads.
-const runtimeBase=new URL('/python/runtime/',self.location.origin).href;
+const runtimeBase=new URL(appPath('/python/runtime/'),self.location.origin).href;
 const runtimeLoader=runtimeBase+'pyodide.mjs';
 const rawFetch=self.fetch.bind(self);
 self.fetch=(url,options)=>{
