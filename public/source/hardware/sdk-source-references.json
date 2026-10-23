@@ -1,0 +1,205 @@
+{
+  "sdkPackage": {
+    "name": "esp32-libs",
+    "version": "3.3.7",
+    "url": "https://github.com/espressif/arduino-esp32/releases/download/3.3.7/esp32-libs-3.3.7.zip",
+    "sha256": "913cffb43e7fdd8f8ddcd045908fa49f98dfff28832706c850b66fe9ab324bd7"
+  },
+  "references": [
+    {
+      "name": "ESP-IDF",
+      "ref": "87912cd291d68f4319f13695718af6754879a83f",
+      "source": "https://github.com/espressif/esp-idf/tree/87912cd291d68f4319f13695718af6754879a83f",
+      "note": "Release/v5.5; Arduino release identifies ESP-IDF5.5.2. Recursive submodules retain their own notices."
+    },
+    {
+      "name": "Arduino source used by SDK builder",
+      "ref": "86c2c0046d4c732aa7cf6e049ac3b76a4da148b3",
+      "source": "https://github.com/espressif/arduino-esp32/tree/86c2c0046d4c732aa7cf6e049ac3b76a4da148b3"
+    },
+    {
+      "name": "TinyUSB",
+      "ref": "2883403ed010c54c33a38c28358a4dd0c67d67c0",
+      "source": "https://github.com/hathach/tinyusb/tree/2883403ed010c54c33a38c28358a4dd0c67d67c0"
+    },
+    {
+      "name": "Espressif Xtensa compiler build sources",
+      "version": "14.2.0_20251107",
+      "source": "https://github.com/espressif/crosstool-NG/releases/tag/esp-14.2.0_20251107"
+    },
+    {
+      "name": "Arduino AVR compiler build sources",
+      "version": "7.3.0-atmel3.6.1-arduino7",
+      "source": "https://github.com/arduino/toolchain-avr/releases/tag/7.3.0-atmel3.6.1-arduino7"
+    }
+  ],
+  "components": [
+    {
+      "name": "chmorgan__esp-libhelix-mp3",
+      "version": "1.0.3",
+      "source": "https://components.espressif.com/components/chmorgan/esp-libhelix-mp3/versions/1.0.3"
+    },
+    {
+      "name": "espressif__cbor",
+      "version": "0.6.1~4",
+      "source": "https://components.espressif.com/components/espressif/cbor/versions/0.6.1~4"
+    },
+    {
+      "name": "espressif__esp-dsp",
+      "version": "1.7.0",
+      "source": "https://components.espressif.com/components/espressif/esp-dsp/versions/1.7.0"
+    },
+    {
+      "name": "espressif__esp-modbus",
+      "version": "1.0.18",
+      "source": "https://components.espressif.com/components/espressif/esp-modbus/versions/1.0.18"
+    },
+    {
+      "name": "espressif__esp-nn",
+      "version": "1.1.2",
+      "source": "https://components.espressif.com/components/espressif/esp-nn/versions/1.1.2"
+    },
+    {
+      "name": "espressif__esp-serial-flasher",
+      "version": "0.0.11",
+      "source": "https://components.espressif.com/components/espressif/esp-serial-flasher/versions/0.0.11"
+    },
+    {
+      "name": "espressif__esp-tflite-micro",
+      "version": "1.3.5",
+      "source": "https://components.espressif.com/components/espressif/esp-tflite-micro/versions/1.3.5"
+    },
+    {
+      "name": "espressif__esp-zboss-lib",
+      "version": "1.6.4",
+      "source": "https://components.espressif.com/components/espressif/esp-zboss-lib/versions/1.6.4"
+    },
+    {
+      "name": "espressif__esp-zigbee-lib",
+      "version": "1.6.8",
+      "source": "https://components.espressif.com/components/espressif/esp-zigbee-lib/versions/1.6.8"
+    },
+    {
+      "name": "espressif__esp32-camera",
+      "version": null,
+      "source": "https://github.com/espressif/esp32-camera",
+      "note": "The upstream SDK versions.txt does not record a version for this component. Camera functionality is not linked into the DUETBlox GPIO sketch."
+    },
+    {
+      "name": "espressif__esp_delta_ota",
+      "version": "1.1.4",
+      "source": "https://components.espressif.com/components/espressif/esp_delta_ota/versions/1.1.4"
+    },
+    {
+      "name": "espressif__esp_diag_data_store",
+      "version": "1.0.2",
+      "source": "https://components.espressif.com/components/espressif/esp_diag_data_store/versions/1.0.2"
+    },
+    {
+      "name": "espressif__esp_diagnostics",
+      "version": "1.2.1",
+      "source": "https://components.espressif.com/components/espressif/esp_diagnostics/versions/1.2.1"
+    },
+    {
+      "name": "espressif__esp_encrypted_img",
+      "version": "2.1.0",
+      "source": "https://components.espressif.com/components/espressif/esp_encrypted_img/versions/2.1.0"
+    },
+    {
+      "name": "espressif__esp_insights",
+      "version": "1.2.2",
+      "source": "https://components.espressif.com/components/espressif/esp_insights/versions/1.2.2"
+    },
+    {
+      "name": "espressif__esp_jpeg",
+      "version": "1.3.1",
+      "source": "https://components.espressif.com/components/espressif/esp_jpeg/versions/1.3.1"
+    },
+    {
+      "name": "espressif__esp_matter",
+      "version": "1.4.1",
+      "source": "https://components.espressif.com/components/espressif/esp_matter/versions/1.4.1"
+    },
+    {
+      "name": "espressif__esp_modem",
+      "version": "2.0.0",
+      "source": "https://components.espressif.com/components/espressif/esp_modem/versions/2.0.0"
+    },
+    {
+      "name": "espressif__esp_rainmaker",
+      "version": "1.5.2",
+      "source": "https://components.espressif.com/components/espressif/esp_rainmaker/versions/1.5.2"
+    },
+    {
+      "name": "espressif__esp_rcp_update",
+      "version": "1.2.0",
+      "source": "https://components.espressif.com/components/espressif/esp_rcp_update/versions/1.2.0"
+    },
+    {
+      "name": "espressif__esp_schedule",
+      "version": "1.2.0",
+      "source": "https://components.espressif.com/components/espressif/esp_schedule/versions/1.2.0"
+    },
+    {
+      "name": "espressif__esp_secure_cert_mgr",
+      "version": "2.8.0",
+      "source": "https://components.espressif.com/components/espressif/esp_secure_cert_mgr/versions/2.8.0"
+    },
+    {
+      "name": "espressif__jsmn",
+      "version": "1.1.0",
+      "source": "https://components.espressif.com/components/espressif/jsmn/versions/1.1.0"
+    },
+    {
+      "name": "espressif__json_generator",
+      "version": "1.1.2",
+      "source": "https://components.espressif.com/components/espressif/json_generator/versions/1.1.2"
+    },
+    {
+      "name": "espressif__json_parser",
+      "version": "1.0.3",
+      "source": "https://components.espressif.com/components/espressif/json_parser/versions/1.0.3"
+    },
+    {
+      "name": "espressif__lan867x",
+      "version": "2.0.0",
+      "source": "https://components.espressif.com/components/espressif/lan867x/versions/2.0.0"
+    },
+    {
+      "name": "espressif__lan86xx_common",
+      "version": "1.0.0",
+      "source": "https://components.espressif.com/components/espressif/lan86xx_common/versions/1.0.0"
+    },
+    {
+      "name": "espressif__libsodium",
+      "version": "1.0.20~3",
+      "source": "https://components.espressif.com/components/espressif/libsodium/versions/1.0.20~3"
+    },
+    {
+      "name": "espressif__mdns",
+      "version": "1.9.1",
+      "source": "https://components.espressif.com/components/espressif/mdns/versions/1.9.1"
+    },
+    {
+      "name": "espressif__network_provisioning",
+      "version": "1.0.2",
+      "source": "https://components.espressif.com/components/espressif/network_provisioning/versions/1.0.2"
+    },
+    {
+      "name": "espressif__qrcode",
+      "version": "0.1.0~2",
+      "source": "https://components.espressif.com/components/espressif/qrcode/versions/0.1.0~2"
+    },
+    {
+      "name": "espressif__rmaker_common",
+      "version": "1.4.6",
+      "source": "https://components.espressif.com/components/espressif/rmaker_common/versions/1.4.6"
+    },
+    {
+      "name": "joltwallet__littlefs",
+      "version": "1.20.4",
+      "source": "https://components.espressif.com/components/joltwallet/littlefs/versions/1.20.4"
+    }
+  ],
+  "note": "This lists the upstream SDK contents, not a claim that every component is linked into these GPIO firmware images. SDK component sources remain at their pinned upstream references; compiler executables are not mirrored."
+}
