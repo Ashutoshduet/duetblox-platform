@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validateClasses,modelBaseURL,rankedPredictions,validateDataset} from './validation.js';
+const samples=Array(6).fill('data:image/png;base64,AA==');
+test('training rejects duplicate labels and insufficient examples',()=>{assert.throws(()=>validateClasses([{name:'Cat',samples},{name:'cat',samples}]),/different/);assert.throws(()=>validateClasses([{name:'A',samples},{name:'B',samples:[]}]),/6 images/);assert.equal(validateClasses([{name:'A',samples},{name:'B',samples}]),true);});
+test('model links normalize and reject insecure credentials',()=>{assert.equal(modelBaseURL('https://teachablemachine.withgoogle.com/models/abc/model.json'),'https://teachablemachine.withgoogle.com/models/abc/');assert.throws(()=>modelBaseURL('javascript:alert(1)'));assert.throws(()=>modelBaseURL('https://user:secret@example.org/model/'));});
+test('rankings maintain label-score relationships',()=>{assert.deepEqual(rankedPredictions([{className:'A',probability:.2},{className:'B',probability:.8}]).map(p=>p.className),['B','A']);});
+test('import rejects remote samples',()=>{assert.throws(()=>validateDataset({kind:'duetblox-image-dataset',version:1,classes:[{id:'x',name:'X',samples:['https://example.com/image.jpg']}]}));});

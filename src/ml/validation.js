@@ -1,0 +1,10 @@
+export function validateClasses(classes){
+  if(!Array.isArray(classes)||classes.length<2)throw new Error('Add at least two classes before training.');
+  if(classes.length>30)throw new Error('This workspace supports up to 30 classes.');
+  const names=new Set();
+  for(const item of classes){const name=String(item.name??'').trim();if(!name)throw new Error('Give every class a name.');if(names.has(name.toLowerCase()))throw new Error('Each class needs a different name.');names.add(name.toLowerCase());if(!Array.isArray(item.samples)||item.samples.length<6)throw new Error(`Add at least 6 images to “${name}”. More varied examples improve your model.`);if(item.samples.length>300)throw new Error('Use no more than 300 images per class.');if(item.samples.some(s=>typeof s!=='string'||!s.startsWith('data:image/')))throw new Error('Training samples must be local image data.');}
+  return true;
+}
+export function validateDataset(input){if(!input||input.kind!=='duetblox-image-dataset'||input.version!==1||!Array.isArray(input.classes)||input.classes.length>30)throw new Error('This is not a DUETBlox image dataset.');for(const c of input.classes){if(typeof c.id!=='string'||typeof c.name!=='string'||!Array.isArray(c.samples)||c.samples.length>300||c.samples.some(s=>typeof s!=='string'||!/^data:image\/(jpeg|png|webp);base64,/.test(s)||s.length>1000000))throw new Error('The dataset contains invalid class or image data.');}return input.classes;}
+export function modelBaseURL(input){let url;try{url=new URL(input);}catch{throw new Error('Enter a complete Teachable Machine HTTPS model link.');}if(url.protocol!=='https:'||url.username||url.password)throw new Error('Use an HTTPS model link without credentials.');if(url.pathname.endsWith('model.json'))url.pathname=url.pathname.slice(0,-10);else if(!url.pathname.endsWith('/'))url.pathname+='/';url.hash='';url.search='';return url.href;}
+export function rankedPredictions(items){if(!Array.isArray(items))throw new Error('The model did not return predictions.');return items.map(p=>({className:String(p.className),probability:Math.max(0,Math.min(1,Number(p.probability)||0))})).sort((a,b)=>b.probability-a.probability);}
