@@ -1,3 +1,4 @@
+import {appPath} from '../app-paths.js';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Clock3, Download, Flag, Image, MessageCircle,
   Play, Plus, Repeat2, RotateCcw, RotateCw, Square, Trash2, Upload, Volume2, X, ArrowUp, ArrowDown, Home, Eye, EyeOff, Maximize, Minimize, Gauge, Send, Hand, Infinity, Paintbrush, Pen, Mic, BrainCircuit, Cpu, Layers, Undo2, Redo2, Copy, GitBranch, Search, Keyboard, CornerUpLeft} from 'lucide-react';
@@ -366,7 +367,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
 
       <aside className="junior-stage-panel" aria-label="Stage and character settings">
         <div className="junior-stage-heading"><div><span className="junior-eyebrow">THE BIG PICTURE</span><h2>Your stage</h2></div><span className={`junior-engine-status ${ready ? 'junior-engine-ready' : ''}`}><i/>{ready ? 'Scratch engine' : 'Loading engine'}</span></div>
-        <div className="junior-stage-frame"><iframe key={stageRevision} ref={frame} data-duet-editor="junior" src="/scratch/index.html?mode=stage" title="Junior Scratch stage" allow="autoplay"/>
+        <div className="junior-stage-frame"><iframe key={stageRevision} ref={frame} data-duet-editor="junior" src={appPath('/scratch/index.html?mode=stage')} title="Junior Scratch stage" allow="autoplay"/>
           {!ready && <div className="junior-stage-loading"><span className="junior-loading-dot"/>Getting the stage ready…</div>}</div>
         <div className="junior-runbar"><button className="junior-run" disabled={!ready || busy} onClick={run}><Play size={18} fill="currentColor"/>{busy ? 'One moment…' : 'Play story'}</button>
           <button className="junior-control-button" disabled={!ready} onClick={() => stop()} aria-label="Stop story" title="Stop story"><Square size={17} fill="currentColor"/></button>
