@@ -1,9 +1,12 @@
+import {addHinglish} from './hinglish.js';
+import {MORE_LESSONS, LESSON_ORDER} from './lessons-more.js';
+
 const words = (en, hi) => ({en, hi});
 const step = (id, title, body, check, hint) => ({id, title, body, check, ...(hint ? {hint} : {})});
 
 // Labels inside the lessons deliberately match the current English editor controls.
 // Hindi translates the explanation, while preserving the label students must find.
-export const LESSONS = [
+const BASE_LESSONS = [
   {
     id: 'junior-story', target: 'junior', icon: 'Shapes', minutes: 5, tone: 'orange', starter: 'junior',
     title: words('Make a character tell a story', 'किरदार से कहानी बुलवाएँ'),
@@ -149,5 +152,8 @@ export const LESSONS = [
   }
 ];
 
+const ALL = addHinglish([...BASE_LESSONS, ...MORE_LESSONS]);
+export const LESSONS = [...LESSON_ORDER.map(id => ALL.find(lesson => lesson.id === id)).filter(Boolean), ...ALL.filter(lesson => !LESSON_ORDER.includes(lesson.id))];
+export const LOCALES = ['en', 'hi', 'hg'];
 export const lessonById = id => LESSONS.find(lesson => lesson.id === id);
 export const translate = (value, locale) => value[locale] || value.en;

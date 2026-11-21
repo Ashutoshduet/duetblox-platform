@@ -7,13 +7,13 @@ import {compileJuniorProject, parseJuniorProject} from '../junior/model.js';
 import {validateTextDataset} from '../ml/text/classifier.js';
 
 const first = LESSONS[0], other = LESSONS[1];
-test('every lesson has bilingual guidance, a real destination and unique step ids', () => {
+test('every lesson has English, Hindi and Hinglish guidance, a real destination and unique step ids', () => {
   assert.equal(new Set(LESSONS.map(lesson => lesson.id)).size, LESSONS.length);
   for (const lesson of LESSONS) {
-    assert.ok(['junior', 'blocks', 'ml', 'boards'].includes(lesson.target));
+    assert.ok(['junior', 'blocks', 'ml', 'boards', 'python'].includes(lesson.target));
     assert.equal(new Set(lesson.steps.map(step => step.id)).size, lesson.steps.length);
     for (const text of [lesson.title, lesson.summary, lesson.needs, ...lesson.steps.flatMap(step => [step.title, step.body, step.check, ...(step.hint ? [step.hint] : [])])]) {
-      assert.ok(text.en?.length > 5); assert.ok(text.hi?.length > 5);
+      assert.ok(text.en?.length > 5); assert.ok(text.hi?.length > 5); assert.ok(text.hg?.length > 5, `${lesson.id}: Hinglish missing for ${text.en}`);
     }
   }
 });
@@ -74,4 +74,12 @@ test('offline Text starter passes the real dataset validator and has holdout-rea
   const file = starterFile('text'), data = file.data; validateTextDataset(data);
   assert.equal(data.classes.length, 2); assert.ok(data.classes.every(item => new Set(item.samples).size >= 5));
   assert.throws(() => starterFile('unknown'), /does not have a starter/);
+});
+
+test('Hinglish is a lesson language and the lesson list keeps its order', () => {
+  assert.equal(updateProgress(emptyProgress(), {type: 'locale', locale: 'hg'}).locale, 'hg');
+  assert.equal(normalizeProgress({version: 1, locale: 'hg'}).locale, 'hg');
+  assert.ok(LESSONS.length >= 13);
+  assert.equal(LESSONS[0].id, 'junior-story');
+  for (const lesson of LESSONS) if (lesson.link) assert.match(lesson.link.href, /^https:\/\//);
 });

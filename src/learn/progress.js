@@ -1,4 +1,4 @@
-import {LESSONS, lessonById} from './lessons.js';
+import {LESSONS, LOCALES, lessonById} from './lessons.js';
 
 export const PROGRESS_KEY = 'duetblox-learning-v1';
 export const emptyProgress = () => ({version: 1, locale: 'en', selected: LESSONS[0].id, active: null, steps: {}, completed: {}});
@@ -6,7 +6,7 @@ export const emptyProgress = () => ({version: 1, locale: 'en', selected: LESSONS
 export function normalizeProgress(value) {
   const next = emptyProgress();
   if (!value || value.version !== 1) return next;
-  if (value.locale === 'hi') next.locale = 'hi';
+  if (LOCALES.includes(value.locale)) next.locale = value.locale;
   if (lessonById(value.selected)) next.selected = value.selected;
   if (lessonById(value.active)) next.active = value.active;
   for (const lesson of LESSONS) {
@@ -20,7 +20,7 @@ export function normalizeProgress(value) {
 
 export function updateProgress(value, action) {
   const next = normalizeProgress(value);
-  if (action.type === 'locale') return {...next, locale: action.locale === 'hi' ? 'hi' : 'en'};
+  if (action.type === 'locale') return {...next, locale: LOCALES.includes(action.locale) ? action.locale : 'en'};
   if (action.type === 'pause') return {...next, active: null};
   const lesson = lessonById(action.lessonId);
   if (!lesson) return next;
