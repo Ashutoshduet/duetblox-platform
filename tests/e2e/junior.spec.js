@@ -4,7 +4,15 @@ import JSZip from 'jszip';
 import {makeJuniorProject,makeJuniorScript,makeJuniorBlock,parseJuniorProject} from '../../src/junior/model.js';
 import {md5,validateMediaAsset} from '../../src/junior/media.js';
 
-const navigate=(page,name)=>page.getByRole('button',{name,exact:true}).click();
+const navigate=async(page,name)=>{
+  // Stopping a running stage is asynchronous. Wait for the previous navigation
+  // to finish before deciding whether the requested editor is already open.
+  await expect(page.locator('.workspace-switch-status')).toHaveCount(0);
+  if(name==='Junior Blocks'&&await page.getByRole('region',{name:'Junior coding editor',exact:true}).isVisible())return;
+  await page.getByRole('button',{name,exact:true}).click();
+  if(name==='Workspace')await expect(page).toHaveURL(/#\/home$/);
+  if(name==='Junior Blocks')await expect(page).toHaveURL(/#\/junior$/);
+};
 const piece=(type,patch={})=>({...makeJuniorBlock(type),...patch});
 function parallelStory(){
   const project=makeJuniorProject(),sprite=project.scenes[0].sprites[0];

@@ -8,6 +8,7 @@ import {BLOCK_TYPES, compileJuniorProject, makeJuniorBlock, makeJuniorProject, m
   CONDITION_TYPES,JUNIOR_MODEL_TYPES,JUNIOR_KEYS,makeJuniorCondition,resolveJuniorBranch,JUNIOR_BLOCK_HELP,findJuniorBlocks,countJuniorBlocks,copyJuniorBlock,copyJuniorScript,juniorSequenceWarning} from './model.js';
 import {importImage,mediaURL} from './media.js';
 import PaintEditor from './PaintEditor.jsx';
+import Dialog from '../components/Dialog.jsx';
 import {createJuniorStageQueue} from './stage-queue.js';
 import AudioLibrary from './AudioLibrary.jsx';
 import ScriptCanvas from './ScriptCanvas.jsx';
@@ -89,6 +90,26 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
   const [category, setCategory] = useState('motion');
   const [blockSearch,setBlockSearch]=useState('');
   const [showHelp,setShowHelp]=useState(false);
+  const [mobileView,setMobileView]=useState('code');
+  const paletteViewport=useRef(null);
+  const [paletteScroll,setPaletteScroll]=useState({overflow:false,before:false,after:false});
+  function updatePaletteScroll(){
+    const node=paletteViewport.current;if(!node)return;
+    const next={overflow:node.scrollWidth>node.clientWidth+2,before:node.scrollLeft>2,after:node.scrollLeft+node.clientWidth<node.scrollWidth-2};
+    setPaletteScroll(previous=>Object.keys(next).every(key=>next[key]===previous[key])?previous:next);
+  }
+  useEffect(()=>{
+    const node=paletteViewport.current;if(!node)return;
+    node.scrollLeft=0;updatePaletteScroll();
+    const observer=new ResizeObserver(updatePaletteScroll);observer.observe(node);
+    return ()=>observer.disconnect();
+  },[category,blockSearch]);
+  useEffect(()=>{
+    if(mobileView==='stage'){
+      const refresh=requestAnimationFrame(()=>frame.current?.contentWindow?.dispatchEvent(new Event('resize')));
+      return ()=>cancelAnimationFrame(refresh);
+    }
+  },[mobileView]);
   const paletteInput=useRef(null);
   const [editingPath, setEditingPath] = useState([]);
   const [addingSprite, setAddingSprite] = useState(false);
@@ -376,7 +397,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
     </div>;
   }
 
-  return <section className="junior-editor" aria-label="Junior coding editor">
+  return <section className="junior-editor" data-mobile-view={mobileView} aria-label="Junior coding editor">
     <header className="junior-topbar">
       {onExit&&<button className="junior-home-button" onClick={onExit} aria-label="Workspace" title="Back to Workspace"><ArrowLeft size={21}/></button>}
       <div className="junior-brand"><img src={appPath('favicon.svg')} alt=""/><strong>DUET<span>Blox</span></strong><span className="junior-mode-badge">Junior</span></div>
@@ -388,8 +409,14 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
       <input ref={input} type="file" accept=".json,.junior.json" hidden onChange={importFile}/>
       <input ref={imageInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={imageChosen}/>
     </header>
-    {showHelp&&<div className="junior-help-panel"><strong>Your first story</strong><p>1. Drag a picture block onto the canvas. 2. Connect more blocks from left to right. 3. Press the green flag to play.</p><p>Click a number to change it. Drag a yellow start block to move its whole script. Use Events for tap, keyboard and message starts. Click a palette block to add it without dragging.</p><button onClick={()=>setShowHelp(false)}>Got it</button></div>}
+    {showHelp&&<Dialog onClose={()=>setShowHelp(false)} className="junior-help-dialog" labelledBy="junior-help-title"><h2 id="junior-help-title">Your first story</h2><p>1. Drag a picture block onto the canvas. 2. Connect more blocks from left to right. 3. Press the green flag to play.</p><p>Click a number to change it. Drag a yellow start block to move its whole script. Use Events for tap, keyboard and message starts. Click a palette block to add it without dragging.</p><button onClick={()=>setShowHelp(false)}>Got it</button></Dialog>}
 
+    <div className="junior-mobile-toolbar" aria-label="Junior view and playback">
+      <div className="junior-view-switch" role="group" aria-label="Junior view"><button aria-pressed={mobileView==='code'} onClick={()=>setMobileView('code')}>Code</button><button aria-pressed={mobileView==='stage'} onClick={()=>setMobileView('stage')}>Stage</button></div>
+      <button className="junior-mobile-play" aria-label="Play story" disabled={!ready||busy} onClick={()=>{setMobileView('stage');run();}}><Flag size={20} fill="currentColor"/>{busy?'Wait…':'Play'}</button>
+      <button className="junior-mobile-stop" aria-label="Stop story" disabled={!ready} onClick={()=>stop()}><Square size={18} fill="currentColor"/></button>
+      <span className="junior-mobile-state" role="status">{running?'Playing':ready?'Ready':'Loading'}</span>
+    </div>
     <div className="junior-layout">
       <div className="junior-code-panel">
 
@@ -416,7 +443,9 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
           <div className="junior-palette-search"><label><Search size={17}/><input ref={paletteInput} type="search" aria-label="Find a Junior block" placeholder="Find a block…" value={blockSearch} onChange={event=>setBlockSearch(event.target.value)}/></label>{blockSearch&&<button onClick={()=>{setBlockSearch('');paletteInput.current?.focus();}}>Clear search</button>}<span role="status">{searching?`${paletteBlocks.length+paletteTriggers.length} results across all categories`:`${Object.keys(BLOCK_TYPES).length} blocks · ${Object.keys(TRIGGERS).length} start events`}</span></div>
           <div className="junior-palette-tabs" role="tablist" aria-label="Block categories">{[...CATEGORIES,{id:'all',name:'All blocks',icon:Layers}].map((item,index,items) => <button role="tab" aria-selected={!searching&&category === item.id} tabIndex={category===item.id?0:-1}
             className={`junior-category junior-category-${item.id} ${!searching&&category === item.id ? 'junior-active' : ''}`} key={item.id} onClick={() => chooseCategory(item.id)} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowRight'?1:-1)+items.length)%items.length;chooseCategory(items[next].id);event.currentTarget.parentElement.children[next].focus();}}><item.icon size={17}/>{item.name}<span className="junior-category-count">{(item.id==='all'?Object.keys(BLOCK_TYPES).length:findJuniorBlocks('',item.id).length)+(item.id==='events'||item.id==='all'?Object.keys(TRIGGERS).length:0)}</span></button>)}</div>
-          <div className="junior-palette-content" role="tabpanel" aria-label={searching?'Junior block search results':`${category} blocks`}>
+          <div className="junior-palette-scroller">
+          {paletteScroll.overflow&&<button className="junior-palette-page" aria-label="Previous blocks" title="Previous blocks" disabled={!paletteScroll.before} onClick={()=>paletteViewport.current?.scrollBy({left:-paletteViewport.current.clientWidth*.75})}><ChevronLeft size={22}/></button>}
+          <div ref={paletteViewport} onScroll={updatePaletteScroll} className="junior-palette-content" role="tabpanel" aria-label={searching?'Junior block search results':`${category} blocks`}>
             {(searching||category==='all'||category==='events')&&paletteTriggers.map(([trigger,label])=><button key={trigger} className="junior-palette-block junior-palette-events" draggable onDragStart={event=>startDrag(event,{kind:'trigger',trigger})} onDragEnd={endDrag} disabled={sprite.scripts.length>=20} onClick={()=>{addScript(trigger);announce(`Added a script: ${label}.`);}}><PieceShape/>{trigger==='key'?<Keyboard size={25}/>:<Flag size={25}/>}<strong>{label}</strong><span>Start a new script</span></button>)}
             {paletteBlocks.map(([type, info]) => {
               const Icon = BLOCK_ICONS[type] || Cpu;
@@ -429,6 +458,8 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
             {!searching&&category==='ai'&&<p className="junior-palette-description">Train or import a model in ML Studio first. Recognition uses the latest test sample or a microphone/camera started there. To react to a result, add Recognize, then a Control → If / otherwise block. This palette does not turn devices on.</p>}
             {!searching&&category==='devices'&&<p className="junior-palette-description">Connect and configure a supported board in Boards & robots first. Pin numbers depend on the selected board.</p>}
             <p className="junior-palette-help">Drag to connect.<br/>Click to add.</p>
+          </div>
+          {paletteScroll.overflow&&<button className="junior-palette-page" aria-label="More blocks" title="More blocks" disabled={!paletteScroll.after} onClick={()=>paletteViewport.current?.scrollBy({left:paletteViewport.current.clientWidth*.75})}><ChevronRight size={22}/><small>More</small></button>}
           </div>
         </div>
       </div>

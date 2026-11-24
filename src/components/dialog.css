@@ -1,0 +1,9 @@
+.duet-dialog-root {position:fixed;inset:0;z-index:10000;}
+.duet-dialog-backdrop {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:#24163280;overflow:auto;overscroll-behavior:contain;}
+.duet-dialog-panel {box-sizing:border-box;width:min(620px,100%);max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain;border:1px solid #ddd5e8;border-radius:16px;background:#fff;color:#302b43;padding:24px;box-shadow:0 20px 70px #20112d33;font:inherit;}
+.duet-dialog-panel * {box-sizing:border-box;}
+.duet-dialog-panel :is(button,input,select,textarea) {font:inherit;}
+.duet-dialog-panel :is(button,input,select,textarea,summary,[tabindex]):focus-visible {outline:3px solid #185bc4;outline-offset:3px;}
+.duet-dialog-panel button {touch-action:manipulation;}
+.duet-dialog-panel:focus {outline:none;}
+@media(max-width:480px) {.duet-dialog-backdrop{padding:12px;}.duet-dialog-panel{max-height:calc(100dvh - 24px);padding:18px;}}
