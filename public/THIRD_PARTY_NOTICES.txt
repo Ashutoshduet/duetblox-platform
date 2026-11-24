@@ -37,3 +37,10 @@ DM Sans and Manrope fonts are locally bundled under /fonts/, under SIL Open Font
 
 Pyodide 314.0.7 / CPython 3.14.2
 The Python workspace bundles the unchanged official core distribution. Pyodide uses MPL-2.0; CPython and bundled runtime components retain their respective upstream licenses. See /python/NOTICE.txt, /python/LICENSE-PYODIDE.txt and the other LICENSE files in /python/. Exact release, source commit, upstream source URLs and SHA-256 identities are included in /python/upstream-release.json and /python/runtime-manifest.json. DUETBlox's separate integration is AGPL-3.0-only.
+
+Browser circuit simulation (0.8.0):
+eecircuit-engine 1.9.0: EElab.dev, MIT. https://github.com/eelab-dev/EEcircuit-engine
+The bundled WebAssembly runtime reports ngspice 45.2. Ngspice's Modified BSD license and component-specific license exceptions are preserved in simulation-licenses/ngspice-45.2-COPYING.txt; the wrapper's MIT grant does not replace them. This COPYING document is CC-BY-SA-4.0, copyright2025 ngspice team, reproduced unchanged from the matched release tag.
+Embedded GF180 and SkyWater PDK tables retain Apache-2.0 notices; embedded FreePDK tables retain North Carolina State University's BSD notice. The full Apache license and the bundled copyright/permission notices are in simulation-licenses/.
+avr8js 0.21.1: Uri Shaked, MIT. https://github.com/wokwi/avr8js
+Original wrapper/AVR licenses, model notices, dependency provenance and SHA-256 identities are provided in simulation-licenses/. The analog workspace is a separate ngspice solver; it does not imply Arduino/analog co-simulation or physical hardware validation.

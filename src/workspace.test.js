@@ -181,3 +181,30 @@ test('v4 object dataset restores labels and bounded annotations; legacy archive 
  objects.images[0].boxes[0].x=.9;await assert.rejects(parseWorkspace(await archive({version:4},{'ml/objects/dataset.json':JSON.stringify(objects)})),/bounds/);
  const bytes=await archive({version:4},{'ml/objects/dataset.json':'{}'});await assert.rejects(parseWorkspace(declaredSizes(bytes,{'ml/objects/dataset.json':23*1024*1024})),/object dataset exceeds/);
 });
+
+import {emptyCircuit,createStarterCircuit} from './circuits/model.js';
+import {defaultSpiceProject} from './spice/model.js';
+test('v5 archives preserve wired circuit, independent board selection and editable SPICE source',async()=>{
+ const circuit=createStarterCircuit('pot','esp32'),spice={...defaultSpiceProject(),name:'Classroom filter',netlist:'A work in progress\nR1 in out 1k'};
+ const parsed=await parseWorkspace(await archive({version:5,board:'arduino-uno',circuit,spice}));
+ assert.deepEqual(parsed.circuit,circuit);assert.deepEqual(parsed.spice,spice);assert.equal(parsed.board,'arduino-uno');
+});
+test('legacy projects reset circuit and SPICE instead of reusing previous workspace state',async()=>{
+ const parsed=await parseWorkspace(await archive({version:4,board:'esp32'}));
+ assert.deepEqual(parsed.circuit,emptyCircuit('esp32'));assert.deepEqual(parsed.spice,defaultSpiceProject());
+ const planned=await parseWorkspace(await archive({version:4,board:'quarky'}));assert.equal(planned.board,'quarky');assert.equal(planned.circuit.boardId,'arduino-uno');
+});
+test('malformed circuit wires and oversized SPICE drafts reject before workspace replacement',async()=>{
+ const circuit=createStarterCircuit('led');circuit.wires[0].to='missing:pin';
+ await assert.rejects(parseWorkspace(await archive({version:5,circuit})),/pin.*exist/);
+ await assert.rejects(parseWorkspace(await archive({version:5,spice:{...defaultSpiceProject(),netlist:'x'.repeat(24001)}})),/netlist/);
+ await assert.rejects(parseWorkspace(await archive({version:6})),/version/);
+});
+
+test('circuit library preserves inactive board wiring across workspace save and open',async()=>{
+ const uno=createStarterCircuit('led'),esp=createStarterCircuit('pot','esp32');
+ const library={kind:'duetblox-circuit-library',version:1,activeBoardId:'esp32',circuits:{'arduino-uno':uno,esp32:esp}};
+ const parsed=await parseWorkspace(await archive({version:5,circuit:esp,circuitLibrary:library}));
+ assert.deepEqual(parsed.circuitLibrary,library);assert.deepEqual(parsed.circuit,esp);assert.equal(parsed.circuitLibrary.circuits['arduino-uno'].wires.length,3);
+ library.circuits.esp32.boardId='arduino-uno';await assert.rejects(parseWorkspace(await archive({version:5,circuitLibrary:library})),/circuit|board|match/i);
+});

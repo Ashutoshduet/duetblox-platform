@@ -10,7 +10,7 @@ const excluded=new Set(['node_modules','.git','.openai','dist','work','.sites-ru
 async function walk(directory,relative=''){
   for(const entry of await readdir(directory,{withFileTypes:true})){
     const name=relative?`${relative}/${entry.name}`:entry.name;
-    if(excluded.has(entry.name)||name==='public/scratch'||name==='public/python/runtime'||entry.name==='.DS_Store'||entry.name.startsWith('qa-')||entry.name==='.env'||entry.name.startsWith('.env.')||/\.(pem|key)$/.test(entry.name)||['classroom-data','classroom-keys.json','coverage','test-results','playwright-report'].includes(entry.name))continue;
+    if(excluded.has(entry.name)||name==='public/scratch'||name==='public/python/runtime'||entry.name==='.DS_Store'||entry.name.startsWith('qa-')||entry.name==='.env'||entry.name.startsWith('.env.')||/\.(pem|key)$/.test(entry.name)||['classroom-data','classroom-keys.json','coverage','test-results','playwright-report','junior-test-results'].includes(entry.name))continue;
     if(name.startsWith('public/source/')&&(/\.tar\.gz(?:\.|$)|\.zip(?:\.|$)/.test(name)))continue;
     const absolute=path.join(directory,entry.name);
     if(entry.isDirectory())await walk(absolute,name);

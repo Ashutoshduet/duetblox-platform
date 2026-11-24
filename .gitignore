@@ -30,3 +30,6 @@ classroom-data/
 coverage/
 playwright-report/
 test-results/
+
+# Local browser QA evidence; test sources remain versioned.
+/junior-test-results/

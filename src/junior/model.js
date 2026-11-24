@@ -1,5 +1,6 @@
 import {BACKDROP_ART, SPRITE_ART} from './assets.js';
 import {validateMediaAsset} from './media.js';
+import {normalizeJuniorScriptPosition,moveJuniorScriptPosition} from './script-layout.js';
 export const MESSAGE_COLORS = ['orange','red','blue','green','purple','yellow'];
 export const TRIGGERS = {flag:'When play starts',tap:'When character tapped',bump:'When characters bump',message:'When message arrives',key:'When a key is pressed'};
 export const CONDITION_TYPES = Object.freeze({touchingEdge:'Touching the edge',touchingCharacter:'Touching another character',keyPressed:'A key is pressed',mlAccepted:'Prediction is accepted',mlLabel:'Accepted prediction has a label'});
@@ -59,7 +60,8 @@ export function parseJuniorProject(input){
    return {id:String(sprite.id||juniorId('sprite')).slice(0,100),name:String(sprite.name||'Character').slice(0,40),kind:SPRITE_ART[sprite.kind]?sprite.kind:'fox',x:boundedNumber(sprite.x,-240,240,0),y:boundedNumber(sprite.y,-180,180,0),size:boundedNumber(sprite.size,20,200,85),direction:boundedNumber(sprite.direction,-180,180,90),costumeAssetIds:[...new Set(costumes)],initialCostume:boundedNumber(sprite.initialCostume,0,costumes.length,0),scripts:scripts.map(script=>{
     if(!Object.hasOwn(TRIGGERS,script.trigger||'flag'))throw new Error('Unsupported Junior start event.');
     if(script.trigger==='key'&&!JUNIOR_KEYS.includes(script.key??'space'))throw new Error('Choose a supported key for the Junior start event.');
-    return {id:String(script.id||juniorId('script')).slice(0,100),trigger:script.trigger||'flag',message:MESSAGE_COLORS.includes(script.message)?script.message:'orange',...(script.trigger==='key'?{key:script.key??'space'}:{}),blocks:validateBlocks(script.blocks||[],counter)};
+    const canvas=normalizeJuniorScriptPosition(script.canvas);
+    return {id:String(script.id||juniorId('script')).slice(0,100),trigger:script.trigger||'flag',message:MESSAGE_COLORS.includes(script.message)?script.message:'orange',...(script.trigger==='key'?{key:script.key??'space'}:{}),...(canvas?{canvas}:{}),blocks:validateBlocks(script.blocks||[],counter)};
    })};
   })};
  });
@@ -97,7 +99,7 @@ export function findJuniorBlocks(query='',category='all') {
 }
 export function countJuniorBlocks(blocks) {return blocks.reduce((count,block)=>count+1+juniorBranches(block).reduce((sum,branch)=>sum+countJuniorBlocks(block[branch]||[]),0),0);}
 export function copyJuniorBlock(block) {return {...structuredClone(block),id:juniorId('block'),...Object.fromEntries(juniorBranches(block).map(branch=>[branch,(block[branch]||[]).map(copyJuniorBlock)]))};}
-export function copyJuniorScript(script) {return {...structuredClone(script),id:juniorId('script'),blocks:script.blocks.map(copyJuniorBlock)};}
+export function copyJuniorScript(script) {const canvas=normalizeJuniorScriptPosition(script.canvas);return {...structuredClone(script),...(canvas?{canvas:moveJuniorScriptPosition(canvas,24,24)}:{}),id:juniorId('script'),blocks:script.blocks.map(copyJuniorBlock)};}
 
 export function juniorSequenceWarning(blocks) {
  const index=blocks.findIndex(block=>['forever','end','scene'].includes(block.type)||(block.type==='stop'&&block.choice!=='other scripts in sprite'));

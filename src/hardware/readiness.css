@@ -20,3 +20,5 @@
 .hardware-connection{gap:16px;flex-wrap:wrap}
 .hardware-connection-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:800px){.hardware-readiness ul,.hardware-modes{grid-template-columns:1fr}.hardware-capabilities dl>div{grid-template-columns:1fr;gap:4px}}
+
+.hardware-upload-steps{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:0;margin:18px 0;counter-reset:upload-step}.hardware-upload-steps li{counter-increment:upload-step;border:1px solid #dce7e8;border-radius:10px;background:#f8fbfa;padding:14px;font-size:12px;line-height:1.5}.hardware-upload-steps li:before{content:counter(upload-step);display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#0a7c72;color:#fff;font-weight:700;margin-right:7px}.hardware-upload-steps span{display:block;margin-top:8px;color:#617582}.hardware-origin-note{font-size:12px;overflow-wrap:anywhere}.hardware-origin-note code{background:#e8f4f0;padding:2px 5px;border-radius:4px}.firmware-ready>.small-button{margin:8px}@media(max-width:650px){.hardware-upload-steps{grid-template-columns:1fr}}
