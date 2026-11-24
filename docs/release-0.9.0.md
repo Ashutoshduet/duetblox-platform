@@ -80,7 +80,7 @@ The complete offline pack contains 3,216 files (328.5 MiB), version `cc25bf342f4
 
 Compilation covered Uno R3, Mega 2560, classic Nano with current/old bootloader targets, ESP32-WROOM and ESP32-CAM. Four additional Uno builds covered button, PWM, servo and tone. No physical USB upload or sensor/robot operation was performed: the user had no board available.
 
-The hardware-focused 106 checks, Junior unit checks and SPICE checks are subsets of the suites above, not additional independent totals. This validation is bounded to the documented scenarios and does not establish that every feature is bug-free. The live website has not been updated by this validation.
+The hardware-focused 106 checks, Junior unit checks and SPICE checks are subsets of the suites above, not additional independent totals. This validation is bounded to the documented scenarios and does not establish that every feature is bug-free. Publication and hosted validation are recorded separately below.
 
 Evidence categories retained for this release:
 
@@ -94,6 +94,28 @@ Evidence categories retained for this release:
 - Production cold-offline testing is recorded separately from development-server tests. A generated cache manifest alone is insufficient evidence.
 
 Local working evidence is in `work/validation/`, including `spice/report.json`, `spice/integration-audit.json`, `ml/report.json`, browser screenshots and failure traces where produced. Requested-tool and public-reference research is stored in the sibling handoff folder `duetblox-rebuild-20261124-research/`. These research checkouts are not app runtime dependencies and may not be present in a source-only Git clone.
+
+## Public deployment on 24 November 2026
+
+The production build is published at [duetpower.in/duetblox/](https://duetpower.in/duetblox/). Its implementation source is public on [the release branch](https://github.com/Ashutoshduet/duetblox-platform/tree/codex/duetblox-studio-20261124), with [pull request 1](https://github.com/Ashutoshduet/duetblox-platform/pull/1) open for review. The repository's `main` branch is unchanged.
+
+The existing live app was copied into private staging. Changed files were applied to that copy; unchanged runtime files were checked against the live manifest, and all 21 retained source archives were independently downloaded and hashed. The new staged manifest exactly matched the tested local release. The old live app was moved into a private rollback folder before the staged app was moved into its dedicated public directory. No parent-site file, DNS record or global server setting was changed.
+
+Public index, service worker, offline manifest and source ZIP bytes match the release hashes. The main homepage, About, Contact, Products, Projects and root service-worker response retained identical status codes and hashes. Public UI checks confirmed the new Circuit Lab and Analog / SPICE workspaces.
+
+The first public browser run passed 15 of 17 scenarios. The other two exposed test-harness limitations: a 15-second shell-installation wait and an intercepted worker fetch resumed after Chromium had already canceled it. The readiness wait now matches the client's bounded 90-second installation window. The cancellation test holds the real worker's start message, asserts native termination on Stop and navigation, restores native behavior, and then verifies a real ngspice solve. These changes did not alter application code or suppress errors.
+
+The final combined public browser suite passed all **17 scenarios in 3.3 minutes**. Its shell installed in 6.93 seconds and its complete offline pack verified in 93.30 seconds. The preceding focused public offline run installed the shell in 9.45 seconds and verified all 3,216 files in 111.92 seconds. With network access disabled, a fresh tab successfully ran SPICE, Python, numeric ML, Junior and Scratch, with zero page errors. The three focused public SPICE scenarios also passed, including cancellation and recovery. Reproduce the hosted suite with a preparation allowance suitable for downloading the complete pack:
+
+```sh
+DUETBLOX_TEST_PRODUCTION=1 \
+DUETBLOX_TEST_URL=https://duetpower.in/duetblox/ \
+DUETBLOX_TEST_OFFLINE_PREPARE_MS=600000 npm run test:e2e
+```
+
+An isolated existing-client profile kept its saved project across a hard refresh, closing/reopening tabs and restarting the browser. A normal reload initially retained the older cached UI. Save work, then use **Cmd+Shift+R** on Mac or **Ctrl+Shift+R** on Windows and close older DUETBlox tabs. Do not clear browser data. Prepare the new offline pack before disconnecting. The host's long cache headers on mutable files remain unchanged; the refresh procedure is a verified workaround, not a server cache-policy fix.
+
+Deployment evidence is retained locally under `work/deployment-20261124/`, including before/after main-site hashes, public file hashes, the staged manifest, upgrade/persistence reports and browser logs. The source ZIP supplied with the app contains the implementation used to build this release; the later documentation and hosted-test harness corrections are also available on the public branch. No physical hardware acceptance or Windows package is added by publication.
 
 ## Requested tools and provenance
 

@@ -5,11 +5,13 @@ Live app: **https://duetpower.in/duetblox/**
 Public repository: **https://github.com/Ashutoshduet/duetblox-platform**
 
 ```sh
-git clone https://github.com/Ashutoshduet/duetblox-platform.git
+git clone --branch codex/duetblox-studio-20261124 https://github.com/Ashutoshduet/duetblox-platform.git
 cd duetblox-platform
 ```
 
-DUETBlox 0.9.0 is a browser-first educational coding application using official Scratch components, an original Junior editor, local machine learning, Python and Arduino/ESP32 programming. This update adds a wired Circuit Lab, actual Uno firmware execution with AVR8js, and a separate ngspice analog workspace. It also improves Junior block placement and preserves each board’s circuit in project files. The existing 13 English/Hindi/Hinglish lessons remain available. See [0.9.0 scope and validation](docs/release-0.9.0.md) and the [simulation guide](docs/simulation.md). The URLs above identify the production deployment and repository; local release validation does not establish that a new build has been published. Windows packaging, additional robot protocols and physical board acceptance remain outstanding.
+DUETBlox 0.9.0 is a browser-first educational coding application using official Scratch components, an original Junior editor, local machine learning, Python and Arduino/ESP32 programming. This update adds a wired Circuit Lab, actual Uno firmware execution with AVR8js, and a separate ngspice analog workspace. It also improves Junior block placement and preserves each board’s circuit in project files. The existing 13 English/Hindi/Hinglish lessons remain available. See [0.9.0 scope and validation](docs/release-0.9.0.md) and the [simulation guide](docs/simulation.md). The release was published under `/duetblox/` on 24 November 2026. Its source is on the branch above and in [pull request 1](https://github.com/Ashutoshduet/duetblox-platform/pull/1); `main` remains unchanged. Windows packaging, additional robot protocols and physical board acceptance remain outstanding.
+
+If the hosted app still shows the older navigation, save your project and use **Cmd+Shift+R** on Mac or **Ctrl+Shift+R** on Windows. Close older DUETBlox tabs after saving. Do not clear browser data: it contains local projects. Prepare the new offline pack again before disconnecting.
 
 ## Run locally
 
