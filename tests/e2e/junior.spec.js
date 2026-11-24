@@ -152,6 +152,25 @@ test('Junior keeps the canvas, stage and picture-block dock visible together at 
     expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(1367);
   }
   await page.screenshot({path:info.outputPath('junior-laptop-layout.png'),fullPage:true});
+  // Browser chrome and dock space leave many real laptops only 650px of page
+  // height. Every floating tool must remain inside the canvas and unobscured.
+  for(const viewport of [{width:1440,height:900},{width:1366,height:768},{width:1366,height:650},{width:1470,height:656}]){
+    await page.setViewportSize(viewport);
+    const tools=await page.locator('.junior-canvas-tools button').evaluateAll(buttons=>{
+      const canvas=document.querySelector('.junior-canvas-viewport').getBoundingClientRect();
+      return buttons.map(button=>{
+        const box=button.getBoundingClientRect(),hit=document.elementFromPoint(box.x+box.width/2,box.y+box.height/2);
+        return {name:button.getAttribute('aria-label'),insideCanvas:box.left>=canvas.left&&box.top>=canvas.top&&box.right<=canvas.right&&box.bottom<=canvas.bottom,insideWindow:box.left>=0&&box.top>=0&&box.right<=innerWidth&&box.bottom<=innerHeight,hit:!!hit&&(hit===button||button.contains(hit))};
+      });
+    });
+    expect(tools).toHaveLength(6);
+    for(const tool of tools){
+      expect(tool.insideCanvas,`${viewport.width}×${viewport.height}: ${tool.name} fits canvas`).toBe(true);
+      expect(tool.insideWindow,`${viewport.width}×${viewport.height}: ${tool.name} fits viewport`).toBe(true);
+      expect(tool.hit,`${viewport.width}×${viewport.height}: ${tool.name} can receive pointer input`).toBe(true);
+    }
+    if(viewport.height<700)await page.screenshot({path:info.outputPath(`junior-short-${viewport.width}x${viewport.height}.png`),fullPage:true});
+  }
 });
 
 test('character selection does not consume Undo, and separate character/scene programs survive reopening',async({page},info)=>{

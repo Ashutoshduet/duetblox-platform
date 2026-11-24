@@ -7,7 +7,7 @@ This update addresses the Junior editor's cramped layout and failed drops onto u
 - A focused purple toolbar replaces the surrounding app chrome while Junior is open. Workspace and Explore controls provide navigation, story Open/Save remains explicit, and complete-workspace Open/Save remains available. An active camera/microphone keeps its visible Stop control.
 - A large dotted canvas sits beside the 4:3 stage, character rail and scene rail. The category dock and horizontal picture-block palette sit below the canvas. SVG puzzle-shaped pieces share their category colors across palette and program.
 - Dropping an action into empty canvas space creates a positioned flag script, or reuses the selected empty script. Event pieces create scripts with their corresponding start events. Root blocks can detach or move between scripts; nested editing retains its explicit branch view.
-- Script zoom is bounded to 60–140%. Drag/drop coordinates account for zoom and scrolling. Edge scrolling, Arrange, keyboard stack positioning and directly editable values remain available.
+- Script zoom is bounded to 60–140%. Drag/drop coordinates account for zoom and scrolling. Edge scrolling, Arrange, keyboard stack positioning and directly editable values remain available. Short desktop viewports use a compact canvas toolbar to keep Undo, Redo and zoom controls inside the visible canvas.
 - Selecting a script, character or scene no longer consumes Undo history. Story and workspace downloads preserve programs and authored positions; older supported story/workspace versions remain readable.
 - Character and backdrop painting are directly reachable. The twenty-costume limit is enforced at the media insertion boundary as well as in the shortcut controls, preventing a saved story from exceeding its import limit. The sound-library tile retains its visible picture-piece background.
 
@@ -22,9 +22,10 @@ At narrow widths, the editor stacks the stage beneath the coding area and permit
 | Junior full-app scenarios, including twenty-costume round trip and sound-library visibility | All 6 passed in the final production suite |
 | Zoom/scroll/drop/reorder canvas checks | 8 passed; zero captured page errors |
 | Emulated touch-enabled Chrome at 390×844 and 820×1180 | Tap-to-add, numeric editing, category switching, reachable playback and no horizontal document overflow passed |
-| Final combined production browser suite | All 22 passed, including actual cold-offline execution |
+| Final combined production browser suite | All 22 passed in 1.0 minute, including actual cold-offline execution |
+| Compact-toolbar regression at 1470×656, 1366×650, 1366×500 and 1440×900 | Controls remained inside the canvas; hit tests and actual Undo/Redo passed |
 
-The production offline pack is `2cfb96ffee11fc02acd2`. Its cold-offline scenario completed verified preparation, disabled network access, opened a fresh tab, and exercised SPICE, Python, numeric ML, Junior and Scratch. Publication checks are recorded separately after upload; a successful local build does not establish publication. The preceding [0.9.0 release](release-0.9.0.md) remains a separate dated validation record.
+The final production suite's cold-offline scenario completed verified preparation, disabled network access, opened a fresh tab, and exercised SPICE, Python, numeric ML, Junior and Scratch. Short desktop canvases previously clipped the top of the vertical toolbar; the compact layout keeps its controls reachable and has explicit geometry and functional Undo/Redo checks. Publication checks are recorded separately after upload; a successful local build does not establish publication. The preceding [0.9.0 release](release-0.9.0.md) remains a separate dated validation record.
 
 Full-app scenarios use the actual stage VM to verify motion and simultaneous scripts, nested repeat behavior, forever-loop stopping, resets, story/workspace archives and reload persistence. Canvas-specific checks verify transformed drop coordinates and long sequences. The sound test opens the library and checks its visibility; it does not request a physical microphone or assess audible quality.
 
