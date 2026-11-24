@@ -32,6 +32,19 @@ for(const viewport of [{width:390,height:844},{width:375,height:667}])test(`phon
  await page.getByRole('button',{name:'Previous blocks',exact:true}).click();await expect.poll(()=>palette.evaluate(node=>node.scrollLeft)).toBeLessThanOrEqual(2);
  await page.getByRole('button',{name:'Junior help',exact:true}).click();const help=page.getByRole('dialog',{name:'Your first story'});await expect(help).toBeVisible();await expect(help.getByRole('button',{name:'Got it'})).toBeFocused();await page.keyboard.press('Escape');
  const story=makeJuniorProject();story.title='Phone story';story.scenes[0].sprites[0].scripts[0].blocks=[{...makeJuniorBlock('right'),value:3}];await chooseStory(page,story);
+ const number=page.getByRole('spinbutton',{name:'Go right squares',exact:true});await inViewport(number);
+ const hitTest=locator=>locator.evaluate(element=>{const r=element.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return hit===element||element.contains(hit);});
+ expect(await hitTest(number),'Block value is not covered by canvas tools').toBe(true);
+ const layout=await page.locator('.junior-script-canvas').evaluate(canvas=>{
+   const viewport=canvas.querySelector('.junior-canvas-viewport').getBoundingClientRect(),tools=canvas.querySelector('.junior-canvas-tools').getBoundingClientRect();
+   return {canvasBottom:viewport.bottom,toolsTop:tools.top};
+ });
+ expect(layout.toolsTop,'Toolbar has its own row outside the scrollable blocks').toBeGreaterThanOrEqual(layout.canvasBottom);
+ for(const button of await page.locator('.junior-canvas-tools button').all())expect(await hitTest(button),'Every tool can receive pointer input').toBe(true);
+ await number.click();await number.fill('4');await expect(number).toHaveValue('4');
+ await page.getByRole('button',{name:'Undo edit',exact:true}).click();await expect(number).toHaveValue('3');
+ await page.getByRole('button',{name:'Redo edit',exact:true}).click();await expect(number).toHaveValue('4');
+ await number.click();await number.fill('3');
  await page.screenshot({path:info.outputPath('phone-code.png')});await page.getByRole('button',{name:'Play story',exact:true}).click();
  await expect(page.getByRole('button',{name:'Stage',exact:true})).toHaveAttribute('aria-pressed','true');await inViewport(page.locator('.junior-stage-frame'));await expect.poll(()=>xPosition(page)).toBe(60);
  await page.screenshot({path:info.outputPath('phone-stage.png')});await page.getByRole('button',{name:'Stop story',exact:true}).click();
