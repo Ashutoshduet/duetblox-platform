@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readJuniorDrag, writeJuniorDrag, moveJuniorBlockToGap, JUNIOR_DRAG_TYPE} from './drag.js';
+import {readJuniorDrag, writeJuniorDrag, moveJuniorBlockToGap, JUNIOR_DRAG_TYPE, juniorCanvasPoint} from './drag.js';
 
 test('a drag can move to the beginning, middle and end without losing nested blocks', () => {
   const nested = {id:'b', children:[{id:'inside'}]};
@@ -28,7 +28,20 @@ test('only validated Junior payloads are accepted; ordinary text and files are i
   writeJuniorDrag(transfer,{kind:'block',id:'a',scriptId:'s'});
   assert.deepEqual(readJuniorDrag(transfer),{kind:'block',id:'a',scriptId:'s'});
   assert.equal(transfer.effectAllowed,'move');
-  for(const bad of ['not JSON','null','{"kind":"palette","type":"__proto__"}','{"kind":"block","id":"a"}',JSON.stringify({kind:'palette',type:'x'.repeat(600)})]){
+  writeJuniorDrag(transfer,{kind:'trigger',trigger:'key'});
+  assert.deepEqual(readJuniorDrag(transfer),{kind:'trigger',trigger:'key'});
+  assert.equal(transfer.effectAllowed,'copy');
+  for(const bad of ['not JSON','null','{"kind":"palette","type":"__proto__"}','{"kind":"trigger","trigger":"__proto__"}','{"kind":"block","id":"a"}','{"kind":"block","id":"","scriptId":"s"}',JSON.stringify({kind:'palette',type:'x'.repeat(600)})]){
     transfer.setData(JUNIOR_DRAG_TYPE,bad);assert.equal(readJuniorDrag(transfer),null);
   }
+});
+
+test('blank canvas drops use project coordinates through scroll and zoom',()=>{
+  assert.deepEqual(juniorCanvasPoint({clientX:300,clientY:240,left:100,top:120}),{x:200,y:120});
+  assert.deepEqual(juniorCanvasPoint({clientX:300,clientY:240,left:100,top:120,scrollLeft:400,scrollTop:200,zoom:.8}),{x:750,y:400});
+  assert.deepEqual(juniorCanvasPoint({clientX:300,clientY:240,left:100,top:120,scrollLeft:400,scrollTop:200,zoom:1.4}),{x:429,y:229});
+  assert.deepEqual(juniorCanvasPoint({clientX:90,clientY:100,left:100,top:120}),{x:0,y:0});
+  assert.deepEqual(juniorCanvasPoint({clientX:100000,clientY:100000,left:0,top:0}),{x:10000,y:10000});
+  for(const zoom of [0,-1,Infinity,NaN])assert.equal(juniorCanvasPoint({clientX:1,clientY:2,left:0,top:0,zoom}),null);
+  assert.equal(juniorCanvasPoint({clientX:NaN,clientY:2,left:0,top:0}),null);
 });

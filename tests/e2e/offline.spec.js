@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 
-const nav=(page,title)=>page.locator('.sidebar').getByRole('button',{name:title,exact:true}).click();
+const nav=async(page,title)=>{if(await page.locator('.junior-editor').isVisible())await page.getByRole('button',{name:'Workspace',exact:true}).click();await page.locator('.sidebar').getByRole('button',{name:title,exact:true}).click();};
 test('prepared production app cold-opens offline and runs SPICE, Python, ML and Scratch',async({context,page},info)=>{
  test.skip(process.env.DUETBLOX_TEST_PRODUCTION!=='1','Requires an already-built app with its real service worker and complete offline pack.');
  // A hosted first install downloads the verified shell before STATUS can answer,
