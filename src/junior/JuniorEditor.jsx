@@ -16,6 +16,9 @@ import {JUNIOR_DRAG_TYPE, readJuniorDrag, writeJuniorDrag, moveJuniorBlockToGap}
 import './junior.css';
 import './junior-workspace.css';
 import {normalizeJuniorScriptPosition} from './script-layout.js';
+import MascotCompanion from '../celebrations/MascotCompanion.jsx';
+import {celebrations} from '../celebrations/store.js';
+import {JUNIOR_CHALLENGES, completedRunMatches, checkJuniorChallenge} from '../celebrations/junior-milestones.js';
 
 export {compileJuniorProject, makeJuniorProject, parseJuniorProject, serializeJuniorProject} from './model.js';
 const BLOCK_ICONS = {bounce:CornerUpLeft,direction:ArrowUp,setX:ArrowRight,setY:ArrowUp,rotationStyle:RotateCw,waitUntil:Clock3,repeatUntil:Repeat2,messageWait:Send,startSound:Volume2,stopSounds:Square,volume:Volume2,move:ArrowRight,turn:RotateCw,right:ArrowRight,left:ArrowLeft,up:ArrowUp,down:ArrowDown,turnLeft:RotateCcw,hop:ArrowUp,home:Home,random:Maximize,say:MessageCircle,grow:Maximize,shrink:Minimize,resetSize:RotateCcw,show:Eye,hide:EyeOff,nextCostume:Layers,costume:Image,wait:Clock3,repeat:Repeat2,forever:Infinity,if:GitBranch,ifElse:GitBranch,stop:Square,end:Square,speed:Gauge,scene:Image,message:Send,sound:Volume2,penDown:Pen,penUp:Pen,clear:Trash2,penColor:Paintbrush,penSize:Pen,stamp:Image,predict:BrainCircuit,sayPrediction:MessageCircle};
@@ -117,6 +120,10 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
   const stagePanel=useRef(null);
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
+  const [challenge, setChallenge] = useState(''), [challengeNotice, setChallengeNotice] = useState('');
+  const celebrationRun = useRef(null), challengeRef = useRef(challenge);
+  challengeRef.current = challenge;
+  const mascotScope = `junior:${current.id}`;
   const [busy, setBusy] = useState(false);
   const [stageRevision,setStageRevision]=useState(0);
   const [previewDirty,setPreviewDirty]=useState(false);
@@ -265,7 +272,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
 
   const loadScene = useCallback(async nextProject => {
     if(!stageQueue.current)stageQueue.current=createJuniorStageQueue(async next=>{
-      const payload={...compileJuniorProject(next),encoding:'json'};
+      const payload={...compileJuniorProject(next,{trackCompletion:true}),encoding:'json'};
       await command('loadProject',payload);
     });
     const applied=await stageQueue.current.load(nextProject);
@@ -274,6 +281,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
   }, [command]);
 
   function restartStage(message='Stage restarted. Your story and edits are safe. Press Play when it is ready.') {
+    celebrationRun.current=null;celebrations.clear(mascotScope);
     actionEpoch.current++;stageQueue.current?.reset();clearTimeout(previewTimer.current);loadedPreview.current=null;
     for(const task of pending.current.values()){clearTimeout(task.timeout);task.reject(new Error('The stage was restarted.'));}pending.current.clear();
     actionInProgress.current=false;runningRef.current=false;setRunning(false);setBusy(false);setReady(false);setPreviewDirty(false);setStageRevision(value=>value+1);announce(message);
@@ -285,6 +293,22 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || event.data?.channel !== 'duetblox') return;
       const {type, requestId, payload} = event.data;
       if (type === 'ready') {stageWindow.current=event.source;setReady(true);setError('');setNotice('Ready to make something wonderful.');return;}
+      if (type === 'juniorComplete') {
+        const run = celebrationRun.current;
+        if (!completedRunMatches(payload, run)) return;
+        celebrationRun.current = null;
+        const latest = currentRef.current;
+        if (latest.id !== run.projectId || latest.selectedSceneId !== run.sceneId) return;
+        if (run.challenge) {
+          if (challengeRef.current !== run.challenge || latest.selectedSpriteId !== run.spriteId) return;
+          const goal = JUNIOR_CHALLENGES[run.challenge];
+          if (checkJuniorChallenge(payload, run)) {
+            setChallengeNotice(goal.success);
+            celebrations.publish({key: `${run.scope}:goal:${run.challenge}`, scope: run.scope, title: 'You reached your goal!', message: `${goal.success} What helped your code work?`, dance: goal.dance});
+          } else setChallengeNotice(`Your story ran to the end. Try this: ${goal.hint}`);
+        } else celebrations.publish({key: `${run.scope}:first-story`, scope: run.scope, title: 'You brought your story to life!', message: 'Your story ran to the end. What would you like to try next?'});
+        return;
+      }
       if (type === 'status') {
         const nextRunning = typeof payload?.running === 'boolean' ? payload.running : payload?.isRunning;
         if (typeof nextRunning === 'boolean') {
@@ -295,7 +319,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
         }
         return;
       }
-      if(type==='error'&&!requestId){setBusy(false);announce(payload?.message||'The stage could not start. Try Restart stage.',true);return;}
+      if(type==='error'&&!requestId){celebrationRun.current=null;setBusy(false);announce(payload?.message||'The stage could not start. Try Restart stage.',true);return;}
       const task = pending.current.get(requestId);
       if (!task) return;
       clearTimeout(task.timeout); pending.current.delete(requestId);
@@ -303,10 +327,12 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
       else if (type === 'result') task.resolve(payload);
     }
     window.addEventListener('message', handleMessage);
-    return () => {mounted.current=false;actionEpoch.current++;stageQueue.current?.cancel();stageWindow.current?.postMessage({channel:'duetblox',type:'stopAll',requestId:`junior-close-${++serial.current}`},window.location.origin);window.removeEventListener('message', handleMessage); clearTimeout(previewTimer.current);
+    return () => {celebrationRun.current=null;mounted.current=false;actionEpoch.current++;stageQueue.current?.cancel();stageWindow.current?.postMessage({channel:'duetblox',type:'stopAll',requestId:`junior-close-${++serial.current}`},window.location.origin);window.removeEventListener('message', handleMessage); clearTimeout(previewTimer.current);
       for (const task of pending.current.values()) {clearTimeout(task.timeout); task.reject(new Error('The Junior stage was closed.'));}
       pending.current.clear();};
   }, []);
+
+  useEffect(() => {celebrationRun.current = null; setChallengeNotice(''); celebrations.clear(mascotScope);}, [current.id, current.selectedSceneId]);
 
   useEffect(()=>{if(ready)return;const timer=setTimeout(()=>setError('The stage is taking longer to start. Use Restart stage to try again; your story is kept.'),20000);return()=>clearTimeout(timer);},[ready,stageRevision]);
 
@@ -331,18 +357,23 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
 
   async function run() {
     const epoch=++actionEpoch.current;
+    celebrationRun.current=null;celebrations.clear(mascotScope);setChallengeNotice('');
     actionInProgress.current = true; clearTimeout(previewTimer.current); setBusy(true);
     try {
       if(!await loadScene(current)||epoch!==actionEpoch.current||!mounted.current)return;
+      const runId=`junior-play-${++serial.current}-${Date.now()}`;
+      celebrationRun.current={id:runId,scope:mascotScope,projectId:current.id,sceneId:scene.id,spriteId:sprite.id,challenge,
+        targetIndex:current.scenes.slice(0,current.scenes.indexOf(scene)).reduce((count,item)=>count+item.sprites.length,0)+scene.sprites.indexOf(sprite)};
       runningRef.current=true;setRunning(true);announce(`Running ${scene.name}. All characters start together.`);
-      await command('greenFlag');
+      await command('greenFlag',{runId});
     } catch(failure) {
-      if(epoch===actionEpoch.current&&mounted.current){runningRef.current=false;setRunning(false);announce(failure.message,true);}
+      if(epoch===actionEpoch.current&&mounted.current){celebrationRun.current=null;runningRef.current=false;setRunning(false);announce(failure.message,true);}
     } finally {
       if(epoch===actionEpoch.current&&mounted.current){actionInProgress.current=false;setBusy(false);}
     }
   }
   async function stop(reset = false) {
+    celebrationRun.current=null;celebrations.clear(mascotScope);
     const epoch=++actionEpoch.current;
     stageQueue.current?.cancel();actionInProgress.current=true;clearTimeout(previewTimer.current);setBusy(true);
     // Stop is sent immediately, without waiting for preview or Play promises.
@@ -367,7 +398,13 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
     const file = event.target.files?.[0]; event.target.value = '';
     if (!file) return;
     try {if (file.size > 35_000_000) throw new Error('Choose a Junior project smaller than 35 MB.');
-      const next = parseJuniorProject(await file.text()); setEditingPath([]); change(next); announce(`Opened ${next.title}.`);}
+      const next = parseJuniorProject(await file.text());
+      // Saved stories preserve IDs, so an ID-change effect cannot invalidate an
+      // older run. Stop explicitly before replacing its code or feedback.
+      celebrationRun.current=null;celebrations.clear(mascotScope);setChallengeNotice('');
+      if(ready)await stop();else{actionEpoch.current++;stageQueue.current?.cancel();}
+      if(!mounted.current)return;
+      setEditingPath([]); change(next); announce(`Opened ${next.title}.`);}
     catch (failure) {announce(failure.message, true);}
   }
   function renderProgram(target,index=0,handle=null,nested=false) {
@@ -474,6 +511,13 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
           <button className="junior-control-button" disabled={!ready || busy} onClick={() => stop(true)} aria-label="Reset starting positions" title="Reset starting positions"><RotateCcw size={19}/></button>
           <button className="junior-control-button" aria-label="Show stage grid" title="Show stage grid" aria-pressed={showGrid} onClick={()=>setShowGrid(!showGrid)}><Grid3X3 size={22}/></button><button className="junior-control-button" aria-label="Expand stage" title="Expand stage" onClick={expandStage}><Expand size={22}/></button><span className="junior-run-caption">{running ? 'Playing' : 'Ready'}</span></div>
         <div className="junior-status" role="status" aria-live="polite">{error || notice}{previewDirty&&<span className="junior-pending-edits">Edits saved. They appear after Stop or the next Play.</span>}</div><button className="junior-stage-restart" onClick={()=>restartStage()}><RotateCcw size={14}/>Restart stage</button>
+        <MascotCompanion scope={mascotScope} suspended={running || busy}/>
+        <details className="junior-challenge"><summary>Try a small challenge</summary><div>
+          <label>Story goal<select aria-label="Story goal" disabled={running || busy} value={challenge} onChange={event=>{setChallenge(event.target.value);setChallengeNotice('');celebrations.clear(mascotScope);}}><option value="">Free play · your own ideas</option>{Object.entries(JUNIOR_CHALLENGES).map(([id,goal])=><option key={id} value={id}>{goal.title}</option>)}</select></label>
+          <p>{challenge?`${sprite.name}: ${JUNIOR_CHALLENGES[challenge].hint}`:'Explore freely. A finished story earns a first-run celebration; it is not a score or a test.'}</p>
+          <small>Goals check the selected character’s position or direction after a finished run. Your blocks stay as you made them.</small>
+          {challengeNotice&&<p role="status">{challengeNotice}</p>}
+        </div></details>
 
           <aside className="junior-characters" aria-label="Characters">
             <span className="junior-strip-label">Characters<button disabled={(sprite.costumeAssetIds?.length||0)>=20} aria-label="Paint selected character" title="Paint selected character" onClick={()=>setPainting('costume')}><Paintbrush size={17}/></button></span>

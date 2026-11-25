@@ -1,0 +1,26 @@
+.mascot-companion{min-width:0;margin:10px 0;color:#392948;font-size:14px}
+.mascot-companion .celebration-card{margin-bottom:8px}
+.mascot-settings{border:1px solid #ddd5e7;border-radius:12px;background:#faf8fd;overflow:hidden}
+.mascot-settings summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 12px;cursor:pointer;font-size:14px;font-weight:650;list-style:none}
+.mascot-settings summary::after{content:'+';margin-left:auto;font-size:20px}
+.mascot-settings[open] summary::after{content:'−'}
+.mascot-preferences{padding:0 12px 12px;display:grid;gap:10px}
+.mascot-preferences p{margin:0;font-size:14px;line-height:1.5}
+.mascot-preferences small{font-size:12px;line-height:1.5;color:#635773}
+.mascot-preferences label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:36px;font-size:14px}
+.mascot-preferences input[type=checkbox]{width:18px;height:18px;accent-color:#72489d;flex-shrink:0}
+.mascot-preferences select{max-width:100%;min-width:0;margin-left:auto;background:white;color:#392948;border:1px solid #c9bfd7;border-radius:8px;padding:8px;font:inherit}
+.mascot-preferences button{justify-self:start;min-height:44px;border:1px solid #bca8cf;border-radius:9px;padding:8px 14px;background:white;color:#60368b;font:inherit;font-weight:650}
+.mascot-preferences button:disabled{opacity:.5;cursor:not-allowed}
+.mascot-settings :is(button,input,select,summary):focus-visible{outline:3px solid #8153b1;outline-offset:3px}
+.learn-center>.mascot-companion{max-width:740px;margin:16px 0}
+.lesson-companion .mascot-companion{margin:10px 0 0}
+.junior-stage-panel:fullscreen .mascot-companion,.junior-stage-panel:fullscreen .junior-challenge{display:none}
+.junior-challenge{border:1px solid #ddd5e7;border-radius:12px;margin:8px 0;background:#fff}
+.junior-challenge summary{cursor:pointer;min-height:44px;padding:12px;font-size:14px;font-weight:650}
+.junior-challenge>div{display:grid;gap:10px;padding:0 12px 12px}
+.junior-challenge label{display:grid;gap:8px;font-size:14px}
+.junior-challenge select{width:100%;min-width:0;padding:9px;border:1px solid #c9bfd7;border-radius:8px;background:white;font:inherit;color:#392948}
+.junior-challenge p{margin:0;font-size:14px;line-height:1.5;color:#493d58}
+.junior-challenge small{font-size:12px;line-height:1.5;color:#635773}
+@media(max-width:600px){.mascot-preferences select{width:100%;margin-left:0}}

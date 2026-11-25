@@ -8,7 +8,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright-core';
 import JSZip from 'jszip';
-import {makeJuniorProject, makeJuniorBlock, compileJuniorProject} from '../../../src/junior/model.js';
+import {makeJuniorProject, makeJuniorBlock, makeJuniorScene, compileJuniorProject} from '../../../src/junior/model.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicRoot = path.resolve(root, '../../public');
@@ -18,7 +18,7 @@ const harness = mode => `<!doctype html><html><head><meta charset="utf-8"></head
 window.messages=[];window.rpcCalls=[];window.addEventListener('message',event=>{
 const frame=document.querySelector('iframe');if(event.source!==frame.contentWindow||event.origin!==location.origin)return;
 const data=event.data;window.messages.push(data);
-if(data.type==='extensionRequest'){window.rpcCalls.push(data.payload);const values={predict:undefined,label:'Robot',confidence:92,confidenceFor:92,isReady:true,readAnalog:432,readDigital:1};frame.contentWindow.postMessage({channel:'duetblox',type:'extensionResult',requestId:data.requestId,payload:{result:values[data.payload.method]}},location.origin);}
+if(data.type==='extensionRequest'){window.rpcCalls.push(data.payload);const values={predict:undefined,label:'Robot',confidence:92,confidenceFor:92,isReady:true,readAnalog:432,readDigital:1};frame.contentWindow.postMessage({channel:'duetblox',type:'extensionResult',requestId:data.requestId,payload:window.failExtension?{error:'Test extension unavailable.'}:{result:values[data.payload.method]}},location.origin);}
 });
 window.send=(type,payload={})=>new Promise((resolve,reject)=>{const requestId='test-'+crypto.randomUUID();const timeout=setTimeout(()=>{removeEventListener('message',listener);reject(Error('Command timed out: '+type))},12000);const listener=event=>{if(event.source!==document.querySelector('iframe').contentWindow||event.origin!==location.origin||event.data?.requestId!==requestId)return;if(!['result','error'].includes(event.data.type))return;clearTimeout(timeout);removeEventListener('message',listener);event.data.type==='error'?reject(Error(event.data.payload.message)):resolve(event.data.payload);};addEventListener('message',listener);document.querySelector('iframe').contentWindow.postMessage({channel:'duetblox',type,requestId,payload},location.origin);});
 </script></body></html>`;
@@ -93,5 +93,35 @@ test('custom blocks execute through the checked parent RPC and persist in sb3',{
   const calls=await page.evaluate(()=>window.rpcCalls);assert.deepEqual(calls.map(c=>[c.extension,c.method,c.args]),[['ml','predict',[]],['ml','label',[]],['hardware','digitalWrite',[13,1]],['ml','confidence',[]]]);
   const saved=await command(page,'saveProject');await command(page,'loadProject',{project:saved.base64,encoding:'base64'});const reloaded=(await command(page,'getProject')).project;assert.ok(reloaded.extensions.includes('duetML'));assert.ok(reloaded.targets[1].blocks.predict);
   await page.screenshot({path:path.join(root,'work/test-results/custom-extension-program.png')});assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('Junior completion is correlated to real VM execution and excludes empty, stopped and interrupted stories',{timeout:60000},async()=>{
+ const {page,errors}=await open('stage');
+ try {
+  const run = async (id, blocks, options={}) => {
+   const project=makeJuniorProject(),sprite=project.scenes[0].sprites[0];sprite.x=0;sprite.y=0;sprite.direction=90;sprite.scripts[0].blocks=blocks;
+   if(options.scene){const next=makeJuniorScene(1);next.sprites[0].scripts[0].blocks=[{...makeJuniorBlock('move'),value:5}];project.scenes.push(next);sprite.scripts[0].blocks.push({...makeJuniorBlock('scene'),choice:next.id});}
+   await command(page,'loadProject',{...compileJuniorProject(project,{trackCompletion:true}),encoding:'json'});
+   await page.evaluate(fail=>{window.messages=[];window.failExtension=fail;},Boolean(options.failExtension));await command(page,'greenFlag',{runId:id});
+   if(options.stop){await page.waitForFunction(()=>window.messages.some(message=>message.type==='status'&&message.payload.running===true));await command(page,'stopAll');}
+   await page.waitForFunction(()=>{const start=window.messages.findIndex(message=>message.type==='status'&&message.payload.running===true);return start>=0&&window.messages.slice(start+1).some(message=>message.type==='status'&&message.payload.running===false)},null,{timeout:8000});
+   // Asking for status queues a round trip after the idle event callback,
+   // so completion and cancellation have both been observed without sleeps.
+   await command(page,'status');
+   return page.evaluate(()=>window.messages.filter(message=>message.type==='juniorComplete').map(message=>message.payload));
+  };
+  const success=await run('real-repeat',[{...makeJuniorBlock('repeat'),value:3,children:[{...makeJuniorBlock('move'),value:20}]}]);
+  assert.equal(success.length,1);assert.equal(success[0].runId,'real-repeat');assert.equal(success[0].actionCount,3);assert.deepEqual(success[0].actions,{move:3});
+  assert.equal(success[0].initialTargets[0].x,0);assert.equal(success[0].targets[0].x,60);assert.equal(success[0].targets[0].direction,90);
+  assert.deepEqual(await run('empty',[]),[]);
+  assert.deepEqual(await run('zero',[{...makeJuniorBlock('move'),value:0}, {...makeJuniorBlock('say'),text:'',value:0}]),[]);
+  assert.deepEqual(await run('false-branch',[{...makeJuniorBlock('if'),condition:{kind:'keyPressed',key:'space'},children:[makeJuniorBlock('move')]}]),[]);
+  assert.deepEqual(await run('stop-block',[makeJuniorBlock('move'),{...makeJuniorBlock('stop'),choice:'this script'}]),[]);
+  assert.deepEqual(await run('scene-change',[makeJuniorBlock('move')],{scene:true}),[]);
+  assert.deepEqual(await run('extension-error',[makeJuniorBlock('move'),makeJuniorBlock('pinHigh')],{failExtension:true}),[]);
+  assert.ok(await page.evaluate(()=>window.messages.some(message=>message.type==='extensionError'&&message.payload.message==='Test extension unavailable.')));
+  assert.deepEqual(await run('cancel-loop',[{...makeJuniorBlock('forever'),children:[makeJuniorBlock('move'),{...makeJuniorBlock('wait'),value:.1}]}],{stop:true}),[]);
+  assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });

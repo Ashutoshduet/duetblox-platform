@@ -1,0 +1,87 @@
+.celebration-card {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 0 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  color: #382b49;
+  background: #f6f1fb;
+  border: 1px solid #d8c7e8;
+  border-radius: 16px;
+  isolation: isolate;
+}
+.celebration-portrait {grid-column: 1; grid-row: 1 / span 2; align-self: center; min-width: 0;}
+.celebration-copy {min-width: 0; align-self: center; overflow-wrap: anywhere;}
+.celebration-eyebrow {display: block; color: #655076; font-size: .75rem; line-height: 1.4; font-weight: 650;}
+.celebration-copy h3 {margin: 4px 0; color: #49305f; font-size: 1.0625rem; line-height: 1.3; font-weight: 750;}
+.celebration-copy p {margin: 0; color: #51445e; font-size: .875rem; line-height: 1.5;}
+.celebration-actions {display: flex; flex-wrap: wrap; gap: 8px; grid-column: 2; margin-top: 9px;}
+.celebration-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 7px 12px;
+  border: 1px solid #cdb9df;
+  border-radius: 9px;
+  background: white;
+  color: #573776;
+  font: inherit;
+  font-size: .875rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.celebration-actions button:hover {background: #ede2f7; border-color: #9e7cb9;}
+.celebration-actions button:focus-visible {outline: 3px solid #7b4ca2; outline-offset: 3px;}
+.zuni-mascot {--mascot-shell: #B99BDA; --mascot-accent: #A4DBCE; --mascot-face: #FFF5E4; --mascot-ear: #F4B995; --mascot-ink: #54345F; --mascot-blush: #F2B9AE; display: block; width: 100%; height: auto; max-width: 136px; overflow: visible;}
+.mascot-tiko {--mascot-shell: #F3957C; --mascot-accent: #EF7B68;}
+.zuni-mascot[data-palette="ocean"] {--mascot-shell: #83C5DC; --mascot-accent: #BDC7EC; --mascot-ear: #B8E3DA;}
+.zuni-mascot[data-palette="sunset"] {--mascot-shell: #F4AD87; --mascot-accent: #E2A5C9; --mascot-ear: #F3D19D;}
+.zuni-body {transform-origin: 124px 210px;}
+.zuni-head {transform-origin: 126px 127px;}
+.zuni-arm-left {transform-origin: 99px 139px;}
+.zuni-arm-right {transform-origin: 154px 139px;}
+.zuni-leg-left {transform-origin: 110px 179px;}
+.zuni-leg-right {transform-origin: 146px 179px;}
+.zuni-tail {transform-origin: 96px 172px;}
+.zuni-shadow {transform-origin: 124px 218px;}
+.zuni-sparkles {opacity: 0; transform-origin: 120px 120px;}
+.zuni-mascot[data-playing="true"] .zuni-sparkles {animation: zuni-sparkles 2.6s ease-out 1 both;}
+.zuni-mascot[data-playing="true"] .zuni-tail {animation: zuni-tail-wag 2.6s ease-in-out 1 both;}
+.zuni-bounce[data-playing="true"] .zuni-body {animation: zuni-bounce 2.6s ease-in-out 1 both;}
+.zuni-bounce[data-playing="true"] .zuni-shadow {animation: zuni-shadow-bounce 2.6s ease-in-out 1 both;}
+.zuni-shuffle[data-playing="true"] .zuni-body {animation: zuni-shuffle 2.6s ease-in-out 1 both;}
+.zuni-shuffle[data-playing="true"] .zuni-leg-left {animation: zuni-step-left 2.6s ease-in-out 1 both;}
+.zuni-shuffle[data-playing="true"] .zuni-leg-right {animation: zuni-step-right 2.6s ease-in-out 1 both;}
+.zuni-spin[data-playing="true"] .zuni-body {animation: zuni-spin 2.6s ease-in-out 1 both;}
+.zuni-high-five[data-playing="true"] .zuni-arm-right {animation: zuni-high-five 2.6s ease-in-out 1 both;}
+.zuni-high-five[data-playing="true"] .zuni-head {animation: zuni-nod 2.6s ease-in-out 1 both;}
+.zuni-victory[data-playing="true"] .zuni-body {animation: zuni-victory 2.6s ease-in-out 1 both;}
+.zuni-victory[data-playing="true"] .zuni-arm-left {animation: zuni-victory-arm 2.6s ease-in-out 1 both;}
+.zuni-victory[data-playing="true"] .zuni-arm-right {animation: zuni-high-five 2.6s ease-in-out 1 both;}
+
+@keyframes zuni-bounce {0%, 18%, 40%, 62%, 82%, 100% {transform: translateY(0) scale(1);} 10%, 32%, 54% {transform: translateY(-13px) scale(1.02, 1.04);} 22%, 44%, 66% {transform: scale(1.03, .97);}}
+@keyframes zuni-shadow-bounce {0%, 18%, 40%, 62%, 82%, 100% {transform: scaleX(1); opacity: 1;} 10%, 32%, 54% {transform: scaleX(.8); opacity: .6;}}
+@keyframes zuni-shuffle {0%, 100% {transform: translateX(0) rotate(0);} 15%, 45% {transform: translateX(-7px) rotate(-5deg);} 30%, 60% {transform: translateX(7px) rotate(5deg);} 78% {transform: translateX(0) rotate(0);}}
+@keyframes zuni-step-left {0%, 30%, 60%, 100% {transform: rotate(0);} 15%, 45% {transform: rotate(12deg);} 78% {transform: rotate(0);}}
+@keyframes zuni-step-right {0%, 15%, 45%, 78%, 100% {transform: rotate(0);} 30%, 60% {transform: rotate(-12deg);}}
+@keyframes zuni-spin {0%, 12%, 100% {transform: scaleX(1) translateY(0);} 32% {transform: scaleX(.12) translateY(-5px);} 50% {transform: scaleX(-1) translateY(-7px);} 68% {transform: scaleX(.12) translateY(-5px);} 84% {transform: scaleX(1) translateY(0);}}
+@keyframes zuni-high-five {0%, 100% {transform: rotate(0);} 20%, 50% {transform: rotate(-16deg);} 35%, 65% {transform: rotate(9deg);} 82% {transform: rotate(0);}}
+@keyframes zuni-nod {0%, 100% {transform: rotate(0);} 22%, 55% {transform: rotate(-5deg);} 38%, 70% {transform: rotate(3deg);}}
+@keyframes zuni-victory {0%, 100% {transform: translateY(0) scale(1);} 20%, 45% {transform: translateY(-8px) scale(1.03);} 65% {transform: translateY(0) scale(1);}}
+@keyframes zuni-victory-arm {0%, 100% {transform: rotate(0);} 20%, 60% {transform: rotate(100deg);} 80% {transform: rotate(0);}}
+@keyframes zuni-tail-wag {0%, 100% {transform: rotate(0);} 15%, 45% {transform: rotate(-7deg);} 30%, 60% {transform: rotate(7deg);} 78% {transform: rotate(0);}}
+@keyframes zuni-sparkles {0%, 100% {opacity: 0; transform: scale(.9);} 18%, 60% {opacity: .85; transform: scale(1);} 82% {opacity: 0; transform: scale(1.06);}}
+
+.zuni-mascot[data-reduced-motion="true"] *,
+.zuni-mascot[data-playing="false"] * {animation: none !important;}
+@media (prefers-reduced-motion: reduce) {
+  .zuni-mascot *, .celebration-card * {animation: none !important; transition: none !important;}
+}
+@media (max-width: 600px) {
+  .celebration-card {grid-template-columns: 72px minmax(0, 1fr); gap: 0 10px; padding: 12px; border-radius: 12px;}
+  .celebration-actions button {min-height: 44px; padding: 8px 10px;}
+}
