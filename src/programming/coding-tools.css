@@ -10,3 +10,5 @@
 /* Expanded tools grow the document; they must not spill behind the footer. */
 .editor-mode .editor-panel.visible{height:auto;min-height:calc(100vh - 87px)}
 .studio-starter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;color:#637258;font-size:11px}.studio-starter a{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#315e42;background:white;border:1px solid #becfaf;border-radius:7px;padding:7px 10px;text-decoration:none}
+
+.circuit-view-switch{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.circuit-view-switch button{border:1px solid #9bad9e;border-radius:6px;background:white;color:#234d3c;padding:8px 12px}.circuit-view-switch button[aria-pressed=true]{background:#174d3c;color:white}.coding-inspector.with-circuit{max-height:62vh;overflow:auto}.with-circuit .circuit-lab{padding:0}

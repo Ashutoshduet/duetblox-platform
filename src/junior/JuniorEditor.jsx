@@ -1,20 +1,26 @@
 import {appPath} from '../app-paths.js';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Clock3, Download, Flag, Image, MessageCircle,
-  Play, Plus, Repeat2, RotateCcw, RotateCw, Square, Trash2, Upload, Volume2, X, ArrowUp, ArrowDown, Home, Eye, EyeOff, Maximize, Minimize, Gauge, Send, Hand, Infinity, Paintbrush, Pen, Mic, BrainCircuit, Cpu, Layers, Undo2, Redo2, Copy, GitBranch, Search, Keyboard, CornerUpLeft} from 'lucide-react';
+  Play, Plus, Repeat2, RotateCcw, RotateCw, Square, Trash2, Upload, Volume2, X, ArrowUp, ArrowDown, Home, Eye, EyeOff, Maximize, Minimize, Gauge, Send, Hand, Infinity, Paintbrush, Pen, Mic, BrainCircuit, Cpu, Layers, Undo2, Redo2, Copy, GitBranch, Search, Keyboard, CornerUpLeft, Grid3X3, Expand, SlidersHorizontal, FolderOpen, Save, HelpCircle, ChevronDown} from 'lucide-react';
 import {artDataURL, BACKDROP_ART, SPRITE_ART} from './assets.js';
 import {BLOCK_TYPES, compileJuniorProject, makeJuniorBlock, makeJuniorProject, makeJuniorScene,
   makeJuniorSprite, makeJuniorScript, MESSAGE_COLORS, TRIGGERS, parseJuniorProject, removeJuniorBlock, serializeJuniorProject, updateBlockList,
   CONDITION_TYPES,JUNIOR_MODEL_TYPES,JUNIOR_KEYS,makeJuniorCondition,resolveJuniorBranch,JUNIOR_BLOCK_HELP,findJuniorBlocks,countJuniorBlocks,copyJuniorBlock,copyJuniorScript,juniorSequenceWarning} from './model.js';
 import {importImage,mediaURL} from './media.js';
 import PaintEditor from './PaintEditor.jsx';
+import Dialog from '../components/Dialog.jsx';
 import {createJuniorStageQueue} from './stage-queue.js';
 import AudioLibrary from './AudioLibrary.jsx';
+import ScriptCanvas from './ScriptCanvas.jsx';
+import {JUNIOR_DRAG_TYPE, readJuniorDrag, writeJuniorDrag, moveJuniorBlockToGap} from './drag.js';
 import './junior.css';
+import './junior-workspace.css';
+import {normalizeJuniorScriptPosition} from './script-layout.js';
 
 export {compileJuniorProject, makeJuniorProject, parseJuniorProject, serializeJuniorProject} from './model.js';
 const BLOCK_ICONS = {bounce:CornerUpLeft,direction:ArrowUp,setX:ArrowRight,setY:ArrowUp,rotationStyle:RotateCw,waitUntil:Clock3,repeatUntil:Repeat2,messageWait:Send,startSound:Volume2,stopSounds:Square,volume:Volume2,move:ArrowRight,turn:RotateCw,right:ArrowRight,left:ArrowLeft,up:ArrowUp,down:ArrowDown,turnLeft:RotateCcw,hop:ArrowUp,home:Home,random:Maximize,say:MessageCircle,grow:Maximize,shrink:Minimize,resetSize:RotateCcw,show:Eye,hide:EyeOff,nextCostume:Layers,costume:Image,wait:Clock3,repeat:Repeat2,forever:Infinity,if:GitBranch,ifElse:GitBranch,stop:Square,end:Square,speed:Gauge,scene:Image,message:Send,sound:Volume2,penDown:Pen,penUp:Pen,clear:Trash2,penColor:Paintbrush,penSize:Pen,stamp:Image,predict:BrainCircuit,sayPrediction:MessageCircle};
-const CATEGORIES = [{id:'events',name:'Events',icon:Flag},{id:'motion',name:'Motion',icon:ArrowRight},{id:'looks',name:'Looks',icon:MessageCircle},{id:'control',name:'Control',icon:Repeat2},{id:'sound',name:'Sound',icon:Volume2},{id:'pen',name:'Pen',icon:Pen},{id:'ai',name:'AI',icon:BrainCircuit},{id:'devices',name:'Devices',icon:Cpu}];
+const CATEGORIES = [{id:'motion',name:'Motion',icon:ArrowRight},{id:'looks',name:'Looks',icon:MessageCircle},{id:'events',name:'Events',icon:Flag},{id:'control',name:'Control',icon:Repeat2},{id:'sound',name:'Sound',icon:Volume2},{id:'pen',name:'Pen',icon:Pen},{id:'ai',name:'AI',icon:BrainCircuit},{id:'devices',name:'Devices',icon:Cpu}];
+const MOTION_ORDER = ['right','left','up','down','turn','turnLeft','hop','home','move','direction','bounce','random','setX','setY','rotationStyle'];
 function choicesFor(block,project,sprite){
  const pairs = block.type==='rotationStyle'?[['left-right','Flip left / right'],['all around','Turn all around'],["don't rotate",'Stay upright']]:['message','messageWait'].includes(block.type)?MESSAGE_COLORS.map(c=>[c,c]):block.type==='speed'?[['slow','Slow'],['normal','Normal'],['fast','Fast']]:block.type==='stop'?[['all','All scripts'],['this script','This script'],['other scripts in sprite','Other scripts here']]:block.type==='scene'?project.scenes.map(s=>[s.id,s.name]):['sound','startSound'].includes(block.type)?[['chime','Chime'],...(project.assets||[]).filter(a=>a.dataFormat==='wav').map(a=>[a.id,a.name])]:block.type==='costume'?[['first','Original'],...(sprite.costumeAssetIds||[]).map(id=>[id,project.assets?.find(a=>a.id===id)?.name||'Costume'])]:['predict','sayPrediction'].includes(block.type)?[['image','Image'],['sound','Sound'],['pose','Pose']]:null;
  return pairs;
@@ -36,16 +42,20 @@ function BranchPreview({blocks,label,onEdit}){
     <span className="junior-branch-steps">{blocks.length?blocks.slice(0,3).map((block,index)=><span key={block.id}>{index>0?' → ':''}{BLOCK_TYPES[block.type].label}</span>):'Add steps here'}{blocks.length>3?' …':''}</span>
   </button>;
 }
-function BlockCard({block, index, total, project, sprite, onChange, onDelete, onMove, onEditBranch, onDropBlock,onCopy,canCopy}) {
+function PieceShape(){return <svg className="junior-piece-shape" viewBox="0 0 100 88" preserveAspectRatio="none" aria-hidden="true"><path d="M9 1H81Q87 1 87 7V23L98 31V49L87 57V79Q87 85 81 85H9Q3 85 3 79V58L14 49V33L3 24V7Q3 1 9 1Z"/></svg>;}
+function BlockCard({block, index, total, project, sprite, onChange, onDelete, onMove, onEditBranch, onDragBlock, onEndDrag, onDropAt, onDragAt, onCopy,canCopy}) {
   const definition = BLOCK_TYPES[block.type];
   const Icon = BLOCK_ICONS[block.type] || Cpu;
   const choices = choicesFor(block,project,sprite);
   return <div className={`junior-block junior-block-${definition.category}${definition.decision||definition.predicate?' junior-decision-block':''}`} draggable
-    onDragStart={event => {if(event.target.closest('input,select,button')){event.preventDefault();return;}event.dataTransfer.setData('text/duetblox-block', block.id);}}
-    onDragOver={event => {if (event.dataTransfer.types.includes('text/duetblox-block')) event.preventDefault();}}
-    onDrop={event => {event.preventDefault(); onDropBlock(event.dataTransfer.getData('text/duetblox-block'), block.id);}}
+    tabIndex={0} role="group" data-junior-block-id={block.id}
+    onDragStart={event => {if(event.target.closest('input,select,button')){event.preventDefault();return;}onDragBlock(event,block.id);}}
+    onDragEnd={onEndDrag}
+    onDragOver={event => {const bounds=event.currentTarget.getBoundingClientRect();onDragAt(event,index+(event.clientX>bounds.x+bounds.width/2?1:0));}}
+    onDrop={event => {const bounds=event.currentTarget.getBoundingClientRect();onDropAt(event,index+(event.clientX>bounds.x+bounds.width/2?1:0));}}
+    onKeyDown={event=>{if(event.target!==event.currentTarget)return;if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();onDelete();}else if(event.altKey&&event.key==='ArrowLeft'&&index>0){event.preventDefault();onMove(-1);}else if(event.altKey&&event.key==='ArrowRight'&&index<total-1){event.preventDefault();onMove(1);}}}
     aria-label={`${index + 1}. ${definition.label} block`}>
-    <div className="junior-block-tools">
+    <PieceShape/><div className="junior-block-tools">
       <button title="Move block earlier" aria-label={`Move ${definition.label} earlier`} disabled={index === 0} onClick={() => onMove(-1)}><ChevronLeft size={13}/></button>
       <span>{index + 1}</span>
       <button title="Move block later" aria-label={`Move ${definition.label} later`} disabled={index === total - 1} onClick={() => onMove(1)}><ChevronRight size={13}/></button>
@@ -71,7 +81,7 @@ function BlockCard({block, index, total, project, sprite, onChange, onDelete, on
   </div>;
 }
 
-export default function JuniorEditor({project, onProjectChange, onStatus}) {
+export default function JuniorEditor({project, onProjectChange, onStatus, onExit, onNavigate, onSaveWorkspace, onOpenWorkspace, workspaceBusy=false, inputStatus, onStopInput}) {
   const [internal, setInternal] = useState(makeJuniorProject);
   const current = project || internal;
   const scene = current.scenes.find(item => item.id === current.selectedSceneId) || current.scenes[0];
@@ -79,9 +89,32 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
   const script = sprite.scripts.find(item => item.id === current.selectedScriptId) || sprite.scripts[0];
   const [category, setCategory] = useState('motion');
   const [blockSearch,setBlockSearch]=useState('');
+  const [showHelp,setShowHelp]=useState(false);
+  const [mobileView,setMobileView]=useState('code');
+  const paletteViewport=useRef(null);
+  const [paletteScroll,setPaletteScroll]=useState({overflow:false,before:false,after:false});
+  function updatePaletteScroll(){
+    const node=paletteViewport.current;if(!node)return;
+    const next={overflow:node.scrollWidth>node.clientWidth+2,before:node.scrollLeft>2,after:node.scrollLeft+node.clientWidth<node.scrollWidth-2};
+    setPaletteScroll(previous=>Object.keys(next).every(key=>next[key]===previous[key])?previous:next);
+  }
+  useEffect(()=>{
+    const node=paletteViewport.current;if(!node)return;
+    node.scrollLeft=0;updatePaletteScroll();
+    const observer=new ResizeObserver(updatePaletteScroll);observer.observe(node);
+    return ()=>observer.disconnect();
+  },[category,blockSearch]);
+  useEffect(()=>{
+    if(mobileView==='stage'){
+      const refresh=requestAnimationFrame(()=>frame.current?.contentWindow?.dispatchEvent(new Event('resize')));
+      return ()=>cancelAnimationFrame(refresh);
+    }
+  },[mobileView]);
   const paletteInput=useRef(null);
   const [editingPath, setEditingPath] = useState([]);
   const [addingSprite, setAddingSprite] = useState(false);
+  const [dragging,setDragging]=useState(false),[dropGap,setDropGap]=useState(null),[showGrid,setShowGrid]=useState(false);
+  const stagePanel=useRef(null);
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -109,16 +142,67 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
   const totalBlocks=current.scenes.reduce((count,item)=>count+item.sprites.reduce((sum,character)=>sum+character.scripts.reduce((n,story)=>n+countJuniorBlocks(story.blocks),0),0),0);
   const sequenceWarning=juniorSequenceWarning(visibleBlocks);
   const searching=!!blockSearch.trim(),paletteBlocks=findJuniorBlocks(blockSearch,searching?'all':category);
+  if(!searching&&category==='motion')paletteBlocks.sort(([a],[b])=>MOTION_ORDER.indexOf(a)-MOTION_ORDER.indexOf(b));
   const paletteTriggers=Object.entries(TRIGGERS).filter(([,label])=>!searching||blockSearch.trim().toLowerCase().split(/\s+/).every(term=>`${label} start event ${label===TRIGGERS.key?'keyboard':''}`.toLowerCase().includes(term)));
   function chooseCategory(next){setCategory(next);setBlockSearch('');}
-  function addBlock(type){const block=makeJuniorBlock(type);if(type==='scene')block.choice=current.scenes[(current.scenes.indexOf(scene)+1)%current.scenes.length].id;changeVisibleBlocks([...visibleBlocks,block]);announce(`Added ${BLOCK_TYPES[type].label}${parentBranch?' inside this branch':''}.`);}
+  function selectScript(id){setEditingPath([]);change({...current,selectedScriptId:id},{history:false});}
+  function positionScript(id,canvas){changeSprite({scripts:sprite.scripts.map(item=>item.id===id?{...item,canvas}:item)});}
+  function addBlock(type,gap=visibleBlocks.length,targetScript=null){
+    if(!Object.hasOwn(BLOCK_TYPES,type)||totalBlocks>=1000||(BLOCK_TYPES[type].container&&!targetScript&&branchView.path.length>=8))return;
+    const block=makeJuniorBlock(type);if(type==='scene')block.choice=current.scenes[(current.scenes.indexOf(scene)+1)%current.scenes.length].id;
+    const next=[...(targetScript?.blocks||visibleBlocks)];next.splice(Math.max(0,Math.min(next.length,gap)),0,block);
+    if(targetScript){setEditingPath([]);replaceScriptBlocks(targetScript.id,next);}else changeVisibleBlocks(next);
+    announce(`Added ${BLOCK_TYPES[type].label}${parentBranch&&!targetScript?' inside this branch':''}.`);
+  }
+  function startDrag(event,payload){writeJuniorDrag(event.dataTransfer,payload);setDragging(true);setDropGap(null);}
+  function endDrag(){setDragging(false);setDropGap(null);}
+  function dragAt(event,gap,scriptId=script.id){if(!event.dataTransfer.types.includes(JUNIOR_DRAG_TYPE))return;event.preventDefault();event.stopPropagation();setDropGap({scriptId,gap});}
+  function dropAt(event,gap,targetScript=null){
+    event.preventDefault();event.stopPropagation();const payload=readJuniorDrag(event.dataTransfer);endDrag();
+    if(payload?.kind==='palette'){addBlock(payload.type,gap,targetScript);return;}
+    const destination=targetScript||script,list=targetScript?.blocks||visibleBlocks;
+    if(payload?.kind!=='block')return;
+    if(payload.scriptId!==destination.id){
+      if(!targetScript)return;
+      const source=sprite.scripts.find(item=>item.id===payload.scriptId),moved=source?.blocks.find(item=>item.id===payload.id);
+      if(!moved)return;
+      const next=[...list];next.splice(gap,0,moved);
+      replaceScriptBlocks(destination.id,next,new Map([[source.id,source.blocks.filter(item=>item.id!==moved.id)]]));
+      announce('Moved the block into this script.');return;
+    }
+    const next=moveJuniorBlockToGap(list,payload.id,gap);
+    if(next!==list){if(targetScript)replaceScriptBlocks(targetScript.id,next);else changeVisibleBlocks(next);announce('Moved block. The story runs from left to right.');}
+  }
+  function canvasDrop(payload,position){
+    endDrag();setEditingPath([]);
+    const canvas=normalizeJuniorScriptPosition(position);if(!canvas)return;
+    let scripts=sprite.scripts,next;
+    if(payload.kind==='trigger'){
+      if(scripts.length>=20)return;
+      next={...makeJuniorScript(payload.trigger),canvas};scripts=[...scripts,next];
+    }else if(payload.kind==='palette'){
+      if(!Object.hasOwn(BLOCK_TYPES,payload.type)||totalBlocks>=1000)return;
+      const block=makeJuniorBlock(payload.type);if(payload.type==='scene')block.choice=current.scenes[(current.scenes.indexOf(scene)+1)%current.scenes.length].id;
+      const empty=scripts.find(item=>item.id===script.id&&!item.blocks.length);
+      if(!empty&&scripts.length>=20)return;
+      next={...(empty||makeJuniorScript()),canvas,blocks:[block]};
+      scripts=empty?scripts.map(item=>item.id===empty.id?next:item):[...scripts,next];
+    }else if(payload.kind==='block'){
+      const source=scripts.find(item=>item.id===payload.scriptId),block=source?.blocks.find(item=>item.id===payload.id);if(!block)return;
+      if(source.blocks.length===1){next={...source,canvas};scripts=scripts.map(item=>item.id===source.id?next:item);}
+      else{if(scripts.length>=20)return;next={...makeJuniorScript(source.trigger),message:source.message,key:source.key,canvas,blocks:[block]};scripts=[...scripts.map(item=>item.id===source.id?{...item,blocks:item.blocks.filter(b=>b.id!==block.id)}:item),next];}
+    }else return;
+    change({...current,selectedScriptId:next.id,scenes:current.scenes.map(item=>item.id===scene.id?{...item,sprites:item.sprites.map(character=>character.id===sprite.id?{...character,scripts}:character)}:item)});
+    announce('Script placed. Add more blocks, then press the green flag.');
+  }
+  async function expandStage(){try{if(document.fullscreenElement)await document.exitFullscreen();else await stagePanel.current?.requestFullscreen();}catch{announce('This browser cannot show the stage in full screen.',true);}}
   function copyScript(){const copied=copyJuniorScript(script);setEditingPath([]);change({...current,selectedScriptId:copied.id,scenes:current.scenes.map(item=>item.id===scene.id?{...item,sprites:item.sprites.map(character=>character.id===sprite.id?{...character,scripts:[...character.scripts,copied]}:character)}:item)});announce('Copied this script. You are editing the new copy.');}
 
   function announce(message, failure = false) {
     setNotice(message); setError(failure ? message : ''); onStatusRef.current?.(message);
   }
-  function change(next) {
-    undoStack.current.push(current);if(undoStack.current.length>30)undoStack.current.shift();redoStack.current=[];setHistoryVersion(n=>n+1);
+  function change(next,{history=true}={}) {
+    if(history){undoStack.current.push(currentRef.current);if(undoStack.current.length>50)undoStack.current.shift();redoStack.current=[];setHistoryVersion(n=>n+1);}
     setInternal(next);
     onProjectChange?.(next);
   }
@@ -132,12 +216,16 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
   function changeBlocks(next) {
     changeSprite({scripts:sprite.scripts.map(item=>item.id===script.id?{...item,blocks:next}:item)});
   }
+  function replaceScriptBlocks(id,blocks,otherUpdates=new Map()){
+    const updates=new Map(otherUpdates);updates.set(id,blocks);
+    change({...current,selectedScriptId:id,scenes:current.scenes.map(item=>item.id===scene.id?{...item,sprites:item.sprites.map(character=>character.id===sprite.id?{...character,scripts:character.scripts.map(story=>updates.has(story.id)?{...story,blocks:updates.get(story.id)}:story)}:character)}:item)});
+  }
   function changeVisibleBlocks(next) {
     changeBlocks(parentBranch ? updateBlockList(allBlocks, parentBranch.id, {[parentBranch.branch]: next}) : next);
   }
   function selectScene(nextScene) {
     setEditingPath([]);
-    change({...current, selectedSceneId: nextScene.id, selectedSpriteId: nextScene.sprites[0].id,selectedScriptId:nextScene.sprites[0].scripts[0].id});
+    change({...current, selectedSceneId: nextScene.id, selectedSpriteId: nextScene.sprites[0].id,selectedScriptId:nextScene.sprites[0].scripts[0].id},{history:false});
   }
   function addSprite(kind) {
     const newSprite = makeJuniorSprite(kind, scene.sprites.length);
@@ -150,6 +238,10 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
   const sceneURL=item=>assetURL(item.backdropAssetId)||artDataURL(BACKDROP_ART[item.background]);
   function addMedia(asset,target='sound'){
     const latest=currentRef.current;const assets=[...(latest.assets||[]).filter(a=>a.id!==asset.id),asset];
+    const targetScene=latest.scenes.find(item=>item.id===scene.id),targetSprite=targetScene?.sprites.find(item=>item.id===sprite.id);
+    if(target!=='sound'&&!targetScene){announce('Choose a scene before adding media.',true);return;}
+    if(target==='costume'&&(!targetSprite||((targetSprite.costumeAssetIds?.length||0)>=20&&!targetSprite.costumeAssetIds.includes(asset.id)))){announce('A character can have up to 20 custom costumes.',true);return;}
+    if(target==='character'&&targetScene.sprites.length>=12){announce('A scene can have up to 12 characters.',true);return;}
     if(assets.length>100){announce('Use at most 100 custom media assets.',true);return;}
     if(target==='sound'){change({...latest,assets});announce(`Added ${asset.name}. Choose it in a Play sound block.`);return;}
     let selectedSpriteId=latest.selectedSpriteId,selectedScriptId=latest.selectedScriptId;
@@ -278,28 +370,125 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
       const next = parseJuniorProject(await file.text()); setEditingPath([]); change(next); announce(`Opened ${next.title}.`);}
     catch (failure) {announce(failure.message, true);}
   }
-  function moveBlock(index, offset) {
-    const next = [...visibleBlocks]; const [block] = next.splice(index, 1); next.splice(index + offset, 0, block); changeVisibleBlocks(next);
-  }
-  function dropBlock(source, target) {
-    const from = visibleBlocks.findIndex(block => block.id === source), to = visibleBlocks.findIndex(block => block.id === target);
-    if (from < 0 || to < 0 || from === to) return;
-    const next = [...visibleBlocks]; const [block] = next.splice(from, 1); next.splice(to, 0, block); changeVisibleBlocks(next);
+  function renderProgram(target,index=0,handle=null,nested=false) {
+    const list=nested?visibleBlocks:target.blocks;
+    const save=next=>replaceScriptBlocks(target.id,next);
+    const saveList=next=>save(nested?updateBlockList(target.blocks,parentBranch.id,{[parentBranch.branch]:next}):next);
+    const dropTarget=nested?null:target;
+    const activeGap=gap=>dropGap?.scriptId===target.id&&dropGap.gap===gap;
+    return <div className={`junior-program ${dragging?'junior-dragging':''}`} data-selected={target.id===script.id}
+      onFocusCapture={()=>{if(target.id!==script.id&&!nested)selectScript(target.id);}}
+      onDragOver={event=>dragAt(event,list.length,target.id)} onDrop={event=>dropAt(event,list.length,dropTarget)}
+      aria-label={nested?`Blocks inside ${BLOCK_TYPES[parentBranch.block.type].label}`:`Program blocks for script ${index+1}`}>
+      {!nested&&<button className="junior-start-block" {...handle}>{target.trigger==='tap'?<Hand size={29}/>:target.trigger==='message'?<Send size={29}/>:target.trigger==='key'?<Keyboard size={29}/>:<Flag size={29}/>}<strong>Start</strong><span>{TRIGGERS[target.trigger]}{target.trigger==='message'?` · ${target.message}`:target.trigger==='key'?` · ${target.key||'space'}`:''}</span></button>}
+      {list.map((block,blockIndex)=><React.Fragment key={block.id}>
+        <div className={`junior-drop-slot ${activeGap(blockIndex)?'junior-drop-active':''}`} data-junior-drop-index={blockIndex} aria-hidden="true" onDragOver={event=>dragAt(event,blockIndex,target.id)} onDrop={event=>dropAt(event,blockIndex,dropTarget)}/>
+        <BlockCard block={block} index={blockIndex} total={list.length} project={current} sprite={sprite}
+          onChange={patch=>save(updateBlockList(target.blocks,block.id,patch))} onDelete={()=>save(removeJuniorBlock(target.blocks,block.id))}
+          onMove={offset=>saveList(moveJuniorBlockToGap(list,block.id,blockIndex+offset+(offset>0?1:0)))}
+          onEditBranch={branch=>{setEditingPath([...(nested?branchView.path:[]),{id:block.id,branch}]);change({...current,selectedScriptId:target.id},{history:false});}}
+          onDragBlock={(event,id)=>startDrag(event,{kind:'block',id,scriptId:target.id})} onEndDrag={endDrag}
+          onDragAt={(event,gap)=>dragAt(event,gap,target.id)} onDropAt={(event,gap)=>dropAt(event,gap,dropTarget)}
+          canCopy={totalBlocks+countJuniorBlocks([block])<=1000} onCopy={()=>{const next=[...list];next.splice(blockIndex+1,0,copyJuniorBlock(block));saveList(next);announce(`Duplicated ${BLOCK_TYPES[block.type].label}.`);}}/>
+      </React.Fragment>)}
+      <button className={`junior-drop-hint ${activeGap(list.length)?'junior-drop-active':''}`} data-junior-drop-index={list.length}
+        onDragOver={event=>dragAt(event,list.length,target.id)} onDrop={event=>dropAt(event,list.length,dropTarget)}
+        onClick={()=>{if(target.id!==script.id)selectScript(target.id);paletteInput.current?.focus();}}><Plus size={23}/><span>{list.length?'Add the next block':'Find your first block'}</span></button>
+    </div>;
   }
 
-  return <section className="junior-editor" aria-label="Junior coding editor">
-    <div className="junior-topbar">
-      <div className="junior-project-heading"><span className="junior-mode-badge">JUNIOR STUDIO</span>
-        <input aria-label="Junior project title" value={current.title} maxLength={80} onChange={event => change({...current, title: event.target.value})}/></div>
-      <div className="junior-file-actions"><button onClick={() => input.current?.click()}><Upload size={16}/>Open story</button><button onClick={download}><Download size={16}/>Save story</button></div>
+  return <section className="junior-editor" data-mobile-view={mobileView} aria-label="Junior coding editor">
+    <header className="junior-topbar">
+      {onExit&&<button className="junior-home-button" onClick={onExit} aria-label="Workspace" title="Back to Workspace"><ArrowLeft size={21}/></button>}
+      <div className="junior-brand"><img src={appPath('favicon.svg')} alt=""/><strong>DUET<span>Blox</span></strong><span className="junior-mode-badge">Junior</span></div>
+      {onNavigate&&<details className="junior-explore"><summary>Explore <ChevronDown size={14}/></summary><div>{[['blocks','Blocks'],['ml','ML Studio'],['boards','Boards & robots'],['learn','Learn step by step'],['offline','Offline']].map(([id,label])=><button key={id} onClick={()=>onNavigate(id)}>{label}</button>)}{onOpenWorkspace&&<button disabled={workspaceBusy} onClick={onOpenWorkspace}>Open project</button>}</div></details>}
+      <div className="junior-project-heading"><input aria-label="Junior project title" value={current.title} maxLength={80} onChange={event=>change({...current,title:event.target.value})}/></div>
+      <div className="junior-file-actions"><button aria-label="Open story" title="Open story" onClick={()=>input.current?.click()}><FolderOpen size={18}/><span>Open story</span></button><button aria-label="Save story" title="Save story" onClick={download}><Save size={18}/><span>Save story</span></button>{onSaveWorkspace&&<button disabled={workspaceBusy} onClick={onSaveWorkspace} aria-label="Save project" title="Save the complete DUETBlox project"><Download size={18}/></button>}</div>
+      {inputStatus&&<button className="junior-input-stop" onClick={onStopInput} title="Stop camera and microphone"><Square size={14}/>{inputStatus}</button>}
+      <button className="junior-help-button" aria-label="Junior help" aria-pressed={showHelp} onClick={()=>setShowHelp(!showHelp)}><HelpCircle size={23}/></button>
       <input ref={input} type="file" accept=".json,.junior.json" hidden onChange={importFile}/>
       <input ref={imageInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={imageChosen}/>
-    </div>
+    </header>
+    {showHelp&&<Dialog onClose={()=>setShowHelp(false)} className="junior-help-dialog" labelledBy="junior-help-title"><h2 id="junior-help-title">Your first story</h2><p>1. Drag a picture block onto the canvas. 2. Connect more blocks from left to right. 3. Press the green flag to play.</p><p>Click a number to change it. Drag a yellow start block to move its whole script. Use Events for tap, keyboard and message starts. Click a palette block to add it without dragging.</p><button onClick={()=>setShowHelp(false)}>Got it</button></Dialog>}
 
+    <div className="junior-mobile-toolbar" aria-label="Junior view and playback">
+      <div className="junior-view-switch" role="group" aria-label="Junior view"><button aria-pressed={mobileView==='code'} onClick={()=>setMobileView('code')}>Code</button><button aria-pressed={mobileView==='stage'} onClick={()=>setMobileView('stage')}>Stage</button></div>
+      <button className="junior-mobile-play" aria-label="Play story" disabled={!ready||busy} onClick={()=>{setMobileView('stage');run();}}><Flag size={20} fill="currentColor"/>{busy?'Wait…':'Play'}</button>
+      <button className="junior-mobile-stop" aria-label="Stop story" disabled={!ready} onClick={()=>stop()}><Square size={18} fill="currentColor"/></button>
+      <span className="junior-mobile-state" role="status">{running?'Playing':ready?'Ready':'Loading'}</span>
+    </div>
     <div className="junior-layout">
       <div className="junior-code-panel">
+
+
+        <div className="junior-coding-area">
+
+          <div className="junior-workspace">
+            <div className="junior-script-heading"><div className="junior-coding-character"><img src={spriteURL(sprite)} alt=""/><strong>{sprite.name}’s code</strong></div><span className="junior-workspace-hint">Connect blocks. Make something happen.</span><button className="junior-new-script" disabled={sprite.scripts.length>=20} onClick={()=>addScript()}><Plus size={17}/>Add script</button></div>
+            <div className="junior-script-inspector">
+            <div className="junior-trigger-settings"><label>Start <select aria-label="Script start event" value={script.trigger} onChange={e=>changeSprite({scripts:sprite.scripts.map(s=>s.id===script.id?{...s,trigger:e.target.value}:s)})}>{Object.entries(TRIGGERS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>{script.trigger==='message'&&<select aria-label="Start message color" value={script.message||'orange'} onChange={e=>changeSprite({scripts:sprite.scripts.map(s=>s.id===script.id?{...s,message:e.target.value}:s)})}>{MESSAGE_COLORS.map(c=><option key={c}>{c}</option>)}</select>}{script.trigger==='key'&&<label>Key<select aria-label="Start key" value={script.key||'space'} onChange={e=>changeSprite({scripts:sprite.scripts.map(s=>s.id===script.id?{...s,key:e.target.value}:s)})}>{JUNIOR_KEYS.map(key=><option key={key} value={key}>{key}</option>)}</select></label>}<button aria-label="Copy script" disabled={sprite.scripts.length>=20||totalBlocks+countJuniorBlocks(allBlocks)>1000} onClick={copyScript}><Copy size={14}/></button><button aria-label="Remove selected script" disabled={sprite.scripts.length<=1} onClick={()=>{setEditingPath([]);const scripts=sprite.scripts.filter(s=>s.id!==script.id);change({...current,selectedScriptId:scripts[0].id,scenes:current.scenes.map(item=>item.id===scene.id?{...item,sprites:item.sprites.map(character=>character.id===sprite.id?{...character,scripts}:character)}:item)});}}><Trash2 size={14}/></button></div>
+            </div>
+            {parentBranch && <nav className="junior-branch-navigation" aria-label="Nested block path">
+              <button onClick={()=>setEditingPath([])}>Script</button>{branchView.breadcrumbs.map((entry,index)=><React.Fragment key={`${entry.id}-${entry.branch}`}><ChevronRight size={13}/><button aria-current={index===branchView.breadcrumbs.length-1?'location':undefined} onClick={()=>setEditingPath(branchView.path.slice(0,index+1))}>{BLOCK_TYPES[entry.block.type].label}{BLOCK_TYPES[entry.block.type].decision?` · ${entry.branch==='elseChildren'?'Otherwise':'Then'}`:''}</button></React.Fragment>)}
+              <button className="junior-branch-back" onClick={()=>setEditingPath(branchView.path.slice(0,-1))}><ArrowLeft size={14}/>Back one level</button>
+            </nav>}
+            {parentBranch&&<p className="junior-branch-context">{BLOCK_TYPES[parentBranch.block.type].decision?`These steps run when the condition is ${parentBranch.branch==='elseChildren'?'false (Otherwise)':'true (Then)'}.`:parentBranch.block.type==='repeatUntil'?'These steps repeat while the condition is false. They stop when it becomes true.':'These steps repeat together.'} Add blocks below, then go back to continue your story.</p>}
+            {parentBranch?renderProgram(script,0,null,true):<ScriptCanvas scripts={sprite.scripts} selectedId={script.id} renderScript={renderProgram} onSelect={selectScript} onPosition={positionScript} onCanvasDrop={canvasDrop} onEndDrag={endDrag} toolbar={<><button aria-label="Undo edit" title="Undo edit" disabled={!undoStack.current.length} onClick={()=>historyMove(true)}><Undo2 size={22}/></button><button aria-label="Redo edit" title="Redo edit" disabled={!redoStack.current.length} onClick={()=>historyMove(false)}><Redo2 size={22}/></button></>} onArrange={()=>changeSprite({scripts:sprite.scripts.map(item=>{const {canvas,...rest}=item;return rest;})})}/>}
+            {sequenceWarning&&<p className="junior-sequence-warning" role="status">{sequenceWarning}</p>}
+            {parentBranch&&<div className="junior-nested-history"><button aria-label="Undo edit" disabled={!undoStack.current.length} onClick={()=>historyMove(true)}><Undo2 size={18}/>Undo</button><button aria-label="Redo edit" disabled={!redoStack.current.length} onClick={()=>historyMove(false)}><Redo2 size={18}/>Redo</button></div>}
+          </div>
+        </div>
+
+        <div className="junior-palette">
+          <div className="junior-palette-search"><label><Search size={17}/><input ref={paletteInput} type="search" aria-label="Find a Junior block" placeholder="Find a block…" value={blockSearch} onChange={event=>setBlockSearch(event.target.value)}/></label>{blockSearch&&<button onClick={()=>{setBlockSearch('');paletteInput.current?.focus();}}>Clear search</button>}<span role="status">{searching?`${paletteBlocks.length+paletteTriggers.length} results across all categories`:`${Object.keys(BLOCK_TYPES).length} blocks · ${Object.keys(TRIGGERS).length} start events`}</span></div>
+          <div className="junior-palette-tabs" role="tablist" aria-label="Block categories">{[...CATEGORIES,{id:'all',name:'All blocks',icon:Layers}].map((item,index,items) => <button role="tab" aria-selected={!searching&&category === item.id} tabIndex={category===item.id?0:-1}
+            className={`junior-category junior-category-${item.id} ${!searching&&category === item.id ? 'junior-active' : ''}`} key={item.id} onClick={() => chooseCategory(item.id)} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowRight'?1:-1)+items.length)%items.length;chooseCategory(items[next].id);event.currentTarget.parentElement.children[next].focus();}}><item.icon size={17}/>{item.name}<span className="junior-category-count">{(item.id==='all'?Object.keys(BLOCK_TYPES).length:findJuniorBlocks('',item.id).length)+(item.id==='events'||item.id==='all'?Object.keys(TRIGGERS).length:0)}</span></button>)}</div>
+          <div className="junior-palette-scroller">
+          {paletteScroll.overflow&&<button className="junior-palette-page" aria-label="Previous blocks" title="Previous blocks" disabled={!paletteScroll.before} onClick={()=>paletteViewport.current?.scrollBy({left:-paletteViewport.current.clientWidth*.75})}><ChevronLeft size={22}/></button>}
+          <div ref={paletteViewport} onScroll={updatePaletteScroll} className="junior-palette-content" role="tabpanel" aria-label={searching?'Junior block search results':`${category} blocks`}>
+            {(searching||category==='all'||category==='events')&&paletteTriggers.map(([trigger,label])=><button key={trigger} className="junior-palette-block junior-palette-events" draggable onDragStart={event=>startDrag(event,{kind:'trigger',trigger})} onDragEnd={endDrag} disabled={sprite.scripts.length>=20} onClick={()=>{addScript(trigger);announce(`Added a script: ${label}.`);}}><PieceShape/>{trigger==='key'?<Keyboard size={25}/>:<Flag size={25}/>}<strong>{label}</strong><span>Start a new script</span></button>)}
+            {paletteBlocks.map(([type, info]) => {
+              const Icon = BLOCK_ICONS[type] || Cpu;
+              return <button key={type} draggable onDragStart={event=>{if(totalBlocks>=1000||(info.container&&branchView.path.length>=8)){event.preventDefault();return;}startDrag(event,{kind:'palette',type});}} onDragEnd={endDrag} className={`junior-palette-block junior-palette-${info.category}`} disabled={totalBlocks>=1000||(info.container&&branchView.path.length>=8)} onClick={() => addBlock(type)}
+                title={totalBlocks>=1000?'Use no more than 1,000 blocks in a Junior project':info.container&&branchView.path.length>=8?'Use no more than eight nested loops or decisions':JUNIOR_BLOCK_HELP[type]} aria-label={`Add ${info.label} block`}><PieceShape/><Icon size={32}/><strong>{info.label}</strong><span className={info.value!==undefined?'junior-palette-value':'junior-palette-detail'}>{info.value!==undefined?info.value:info.choice||''}</span><Plus className="junior-palette-plus" size={14}/></button>;
+            })}
+            {searching&&!paletteBlocks.length&&!paletteTriggers.length&&<p className="junior-palette-description">No matching blocks. Try “move”, “wait”, “sound” or choose All blocks.</p>}
+            {!searching&&category==='control'&&<p className="junior-palette-description">If chooses what happens next. Put steps in Then for a true condition, and Otherwise for a false one. After that, the story continues.</p>}
+            {!searching&&category==='sound'&&<button className="junior-palette-block junior-palette-sound" title="Record or upload sounds" onClick={()=>setAudioOpen(true)}><PieceShape/><Mic size={25}/><strong>Your sounds</strong></button>}
+            {!searching&&category==='ai'&&<p className="junior-palette-description">Train or import a model in ML Studio first. Recognition uses the latest test sample or a microphone/camera started there. To react to a result, add Recognize, then a Control → If / otherwise block. This palette does not turn devices on.</p>}
+            {!searching&&category==='devices'&&<p className="junior-palette-description">Connect and configure a supported board in Boards & robots first. Pin numbers depend on the selected board.</p>}
+            <p className="junior-palette-help">Drag to connect.<br/>Click to add.</p>
+          </div>
+          {paletteScroll.overflow&&<button className="junior-palette-page" aria-label="More blocks" title="More blocks" disabled={!paletteScroll.after} onClick={()=>paletteViewport.current?.scrollBy({left:paletteViewport.current.clientWidth*.75})}><ChevronRight size={22}/><small>More</small></button>}
+          </div>
+        </div>
+      </div>
+
+      <aside ref={stagePanel} className="junior-stage-panel" aria-label="Stage and character settings">
+        <div className="junior-stage-heading"><h2>{scene.name}</h2><span className={`junior-engine-status ${ready ? 'junior-engine-ready' : ''}`}><i/>{ready ? 'Ready to play' : 'Getting ready'}</span></div>
+        <div className="junior-stage-frame"><iframe key={stageRevision} ref={frame} data-duet-editor="junior" src={appPath('/scratch/index.html?mode=stage')} title="Junior Scratch stage" allow="autoplay"/>
+          {showGrid&&<div className="junior-stage-grid" aria-hidden="true"><span className="junior-grid-origin">0, 0</span><span className="junior-grid-scale">20 pixels per square</span></div>}
+          {!ready && <div className="junior-stage-loading"><span className="junior-loading-dot"/>Getting the stage ready…</div>}</div>
+        <div className="junior-runbar"><button className="junior-run" disabled={!ready || busy} onClick={run}><Flag size={23} fill="currentColor"/>{busy ? 'One moment…' : 'Play story'}</button>
+          <button className="junior-control-button" disabled={!ready} onClick={() => stop()} aria-label="Stop story" title="Stop story"><Square size={17} fill="currentColor"/></button>
+          <button className="junior-control-button" disabled={!ready || busy} onClick={() => stop(true)} aria-label="Reset starting positions" title="Reset starting positions"><RotateCcw size={19}/></button>
+          <button className="junior-control-button" aria-label="Show stage grid" title="Show stage grid" aria-pressed={showGrid} onClick={()=>setShowGrid(!showGrid)}><Grid3X3 size={22}/></button><button className="junior-control-button" aria-label="Expand stage" title="Expand stage" onClick={expandStage}><Expand size={22}/></button><span className="junior-run-caption">{running ? 'Playing' : 'Ready'}</span></div>
+        <div className="junior-status" role="status" aria-live="polite">{error || notice}{previewDirty&&<span className="junior-pending-edits">Edits saved. They appear after Stop or the next Play.</span>}</div><button className="junior-stage-restart" onClick={()=>restartStage()}><RotateCcw size={14}/>Restart stage</button>
+
+          <aside className="junior-characters" aria-label="Characters">
+            <span className="junior-strip-label">Characters<button disabled={(sprite.costumeAssetIds?.length||0)>=20} aria-label="Paint selected character" title="Paint selected character" onClick={()=>setPainting('costume')}><Paintbrush size={17}/></button></span>
+            {scene.sprites.map(item => <button key={item.id} className={`junior-character ${item.id === sprite.id ? 'junior-selected' : ''}`} aria-pressed={item.id === sprite.id}
+              onClick={() => {setEditingPath([]); change({...current, selectedSpriteId: item.id,selectedScriptId:item.scripts[0].id},{history:false});}}>
+              <img src={spriteURL(item)} alt=""/><span>{item.name}</span></button>)}
+            <button className="junior-add-character" aria-label="Add character" disabled={scene.sprites.length >= 12} onClick={() => setAddingSprite(!addingSprite)} aria-expanded={addingSprite}><Plus size={20}/><span>Add</span></button>
+          </aside>
+            {addingSprite && <div className="junior-character-picker" aria-label="Choose a character">
+              <span>Pick a new friend</span>{Object.entries(SPRITE_ART).map(([kind, svg]) => <button key={kind} onClick={() => addSprite(kind)}><img src={artDataURL(svg)} alt=""/>{kind}</button>)}
+              <button disabled={mediaBusy} onClick={()=>chooseImage('character')}><Upload size={22}/>Upload character</button>
+              <button className="junior-icon-button" aria-label="Close character picker" onClick={() => setAddingSprite(false)}><X size={17}/></button>
+            </div>}
         <div className="junior-scene-strip" aria-label="Scenes">
-          <span className="junior-strip-label">Scenes</span>
+          <span className="junior-strip-label">Scenes<button aria-label="Paint selected backdrop" title="Paint selected backdrop" onClick={()=>setPainting('backdrop')}><Image size={17}/></button></span>
           {current.scenes.map((item, index) => <button key={item.id} className={`junior-scene-tab ${item.id === scene.id ? 'junior-active' : ''}`} onClick={() => selectScene(item)} aria-pressed={item.id === scene.id}>
             <img src={sceneURL(item)} alt=""/><span>{index + 1}. {item.name}</span></button>)}
           <button className="junior-add-scene" aria-label="Add scene" title="Add scene" disabled={current.scenes.length >= 12} onClick={() => {
@@ -308,73 +497,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
           }}><Plus size={17}/></button>
         </div>
 
-        <div className="junior-coding-area">
-          <aside className="junior-characters" aria-label="Characters">
-            <span className="junior-strip-label">Cast</span>
-            {scene.sprites.map(item => <button key={item.id} className={`junior-character ${item.id === sprite.id ? 'junior-selected' : ''}`} aria-pressed={item.id === sprite.id}
-              onClick={() => {setEditingPath([]); change({...current, selectedSpriteId: item.id,selectedScriptId:item.scripts[0].id});}}>
-              <img src={spriteURL(item)} alt=""/><span>{item.name}</span></button>)}
-            <button className="junior-add-character" disabled={scene.sprites.length >= 12} onClick={() => setAddingSprite(!addingSprite)} aria-expanded={addingSprite}><Plus size={20}/><span>Add</span></button>
-          </aside>
-          <div className="junior-workspace">
-            <div className="junior-script-heading"><div><span className="junior-eyebrow">LET'S MAKE IT MOVE</span><h2>{sprite.name}’s story</h2></div><div className="junior-history"><button aria-label="Undo edit" disabled={!undoStack.current.length} onClick={()=>historyMove(true)}><Undo2 size={16}/></button><button aria-label="Redo edit" disabled={!redoStack.current.length} onClick={()=>historyMove(false)}><Redo2 size={16}/></button><span className="junior-block-count">{countJuniorBlocks(allBlocks)} blocks</span></div></div>
-            {addingSprite && <div className="junior-character-picker" aria-label="Choose a character">
-              <span>Pick a new friend</span>{Object.entries(SPRITE_ART).map(([kind, svg]) => <button key={kind} onClick={() => addSprite(kind)}><img src={artDataURL(svg)} alt=""/>{kind}</button>)}
-              <button disabled={mediaBusy} onClick={()=>chooseImage('character')}><Upload size={22}/>Upload character</button>
-              <button className="junior-icon-button" aria-label="Close character picker" onClick={() => setAddingSprite(false)}><X size={17}/></button>
-            </div>}
-            <div className="junior-scripts" aria-label="Character scripts">{sprite.scripts.map((item,index)=><button key={item.id} aria-pressed={script.id===item.id} onClick={()=>{setEditingPath([]);change({...current,selectedScriptId:item.id});}}>{index+1}. {`${TRIGGERS[item.trigger].replace('When ','')}${item.trigger==='key'?` · ${item.key||'space'}`:''}`}</button>)}<button disabled={sprite.scripts.length>=20} onClick={()=>addScript()}><Plus size={14}/>Add script</button></div>
-            <div className="junior-trigger-settings"><label>Start <select aria-label="Script start event" value={script.trigger} onChange={e=>changeSprite({scripts:sprite.scripts.map(s=>s.id===script.id?{...s,trigger:e.target.value}:s)})}>{Object.entries(TRIGGERS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>{script.trigger==='message'&&<select aria-label="Start message color" value={script.message||'orange'} onChange={e=>changeSprite({scripts:sprite.scripts.map(s=>s.id===script.id?{...s,message:e.target.value}:s)})}>{MESSAGE_COLORS.map(c=><option key={c}>{c}</option>)}</select>}{script.trigger==='key'&&<label>Key<select aria-label="Start key" value={script.key||'space'} onChange={e=>changeSprite({scripts:sprite.scripts.map(s=>s.id===script.id?{...s,key:e.target.value}:s)})}>{JUNIOR_KEYS.map(key=><option key={key} value={key}>{key}</option>)}</select></label>}<button aria-label="Copy script" disabled={sprite.scripts.length>=20||totalBlocks+countJuniorBlocks(allBlocks)>1000} onClick={copyScript}><Copy size={14}/></button><button aria-label="Remove selected script" disabled={sprite.scripts.length<=1} onClick={()=>{setEditingPath([]);const scripts=sprite.scripts.filter(s=>s.id!==script.id);change({...current,selectedScriptId:scripts[0].id,scenes:current.scenes.map(item=>item.id===scene.id?{...item,sprites:item.sprites.map(character=>character.id===sprite.id?{...character,scripts}:character)}:item)});}}><Trash2 size={14}/></button></div>
-            <p className="junior-workspace-hint">Each script follows its own start event. Blocks run from left to right. One square is 20 pixels.</p>
-            {parentBranch && <nav className="junior-branch-navigation" aria-label="Nested block path">
-              <button onClick={()=>setEditingPath([])}>Script</button>{branchView.breadcrumbs.map((entry,index)=><React.Fragment key={`${entry.id}-${entry.branch}`}><ChevronRight size={13}/><button aria-current={index===branchView.breadcrumbs.length-1?'location':undefined} onClick={()=>setEditingPath(branchView.path.slice(0,index+1))}>{BLOCK_TYPES[entry.block.type].label}{BLOCK_TYPES[entry.block.type].decision?` · ${entry.branch==='elseChildren'?'Otherwise':'Then'}`:''}</button></React.Fragment>)}
-              <button className="junior-branch-back" onClick={()=>setEditingPath(branchView.path.slice(0,-1))}><ArrowLeft size={14}/>Back one level</button>
-            </nav>}
-            {parentBranch&&<p className="junior-branch-context">{BLOCK_TYPES[parentBranch.block.type].decision?`These steps run when the condition is ${parentBranch.branch==='elseChildren'?'false (Otherwise)':'true (Then)'}.`:parentBranch.block.type==='repeatUntil'?'These steps repeat while the condition is false. They stop when it becomes true.':'These steps repeat together.'} Add blocks below, then go back to continue your story.</p>}
-            <div className="junior-program" aria-label={parentBranch ? `Blocks inside ${BLOCK_TYPES[parentBranch.block.type].label}${BLOCK_TYPES[parentBranch.block.type].decision?` ${parentBranch.branch==='elseChildren'?'Otherwise':'Then'}`:''}` : 'Program blocks'}>
-              {!parentBranch && <div className="junior-start-block">{script.trigger==='tap'?<Hand size={29}/>:script.trigger==='message'?<Send size={29}/>:script.trigger==='key'?<Keyboard size={29}/>:<Flag size={29}/>}<strong>Start</strong><span>{TRIGGERS[script.trigger]}{script.trigger==='message'?` · ${script.message}`:script.trigger==='key'?` · ${script.key||'space'}`:''}</span><ChevronRight className="junior-start-arrow" size={20}/></div>}
-              {visibleBlocks.map((block, index) => <BlockCard key={block.id} block={block} index={index} total={visibleBlocks.length} project={current} sprite={sprite}
-                onChange={patch => changeBlocks(updateBlockList(allBlocks, block.id, patch))}
-                onDelete={() => changeBlocks(removeJuniorBlock(allBlocks, block.id))} onMove={offset => moveBlock(index, offset)}
-                onEditBranch={branch=>setEditingPath([...branchView.path,{id:block.id,branch}])} onDropBlock={dropBlock} canCopy={totalBlocks+countJuniorBlocks([block])<=1000} onCopy={()=>{const next=[...visibleBlocks];next.splice(index+1,0,copyJuniorBlock(block));changeVisibleBlocks(next);announce(`Duplicated ${BLOCK_TYPES[block.type].label}.`);}}/>)}
-              <button className="junior-drop-hint" onClick={()=>paletteInput.current?.focus()}><Plus size={23}/><span>{visibleBlocks.length ? 'Add the next block' : 'Find your first block'}</span></button>
-            </div>
-            {sequenceWarning&&<p className="junior-sequence-warning" role="status">{sequenceWarning}</p>}
-            <div className="junior-tip"><span>✦</span><p>Make a little magic.<br/><strong>Try Repeat, open “steps inside”, then add Move and Turn.</strong></p></div>
-          </div>
-        </div>
-
-        <div className="junior-palette">
-          <div className="junior-palette-search"><label><Search size={17}/><input ref={paletteInput} type="search" aria-label="Find a Junior block" placeholder="Find a block… try bounce, key, sound" value={blockSearch} onChange={event=>setBlockSearch(event.target.value)}/></label>{blockSearch&&<button onClick={()=>{setBlockSearch('');paletteInput.current?.focus();}}>Clear search</button>}<span role="status">{searching?`${paletteBlocks.length+paletteTriggers.length} results across all categories`:`${Object.keys(BLOCK_TYPES).length} blocks · ${Object.keys(TRIGGERS).length} start events`}</span></div>
-          <div className="junior-palette-tabs" role="tablist" aria-label="Block categories">{[{id:'all',name:'All blocks',icon:Layers},...CATEGORIES].map((item,index,items) => <button role="tab" aria-selected={!searching&&category === item.id} tabIndex={category===item.id?0:-1}
-            className={`junior-category junior-category-${item.id} ${!searching&&category === item.id ? 'junior-active' : ''}`} key={item.id} onClick={() => chooseCategory(item.id)} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowRight'?1:-1)+items.length)%items.length;chooseCategory(items[next].id);event.currentTarget.parentElement.children[next].focus();}}><item.icon size={17}/>{item.name}<span className="junior-category-count">{(item.id==='all'?Object.keys(BLOCK_TYPES).length:findJuniorBlocks('',item.id).length)+(item.id==='events'||item.id==='all'?Object.keys(TRIGGERS).length:0)}</span></button>)}</div>
-          <div className="junior-palette-content" role="tabpanel" aria-label={searching?'Junior block search results':`${category} blocks`}>
-            {(searching||category==='all'||category==='events')&&paletteTriggers.map(([trigger,label])=><button key={trigger} className="junior-palette-block junior-palette-events" disabled={sprite.scripts.length>=20} onClick={()=>{addScript(trigger);announce(`Added a script: ${label}.`);}}>{trigger==='key'?<Keyboard size={25}/>:<Flag size={25}/>}<strong>{label}</strong><span>Start a new script</span></button>)}
-            {paletteBlocks.map(([type, info]) => {
-              const Icon = BLOCK_ICONS[type] || Cpu;
-              return <button key={type} className={`junior-palette-block junior-palette-${info.category}`} disabled={totalBlocks>=1000||(info.container&&branchView.path.length>=8)} onClick={() => addBlock(type)}
-                title={totalBlocks>=1000?'Use no more than 1,000 blocks in a Junior project':info.container&&branchView.path.length>=8?'Use no more than eight nested loops or decisions':JUNIOR_BLOCK_HELP[type]} aria-label={`Add ${info.label} block`}><Icon size={28}/><strong>{info.label}</strong><span>{searching?JUNIOR_BLOCK_HELP[type]:info.value!==undefined?`${info.value} ${info.unit}`:info.choice||'Add block'}</span><Plus className="junior-palette-plus" size={14}/></button>;
-            })}
-            {searching&&!paletteBlocks.length&&!paletteTriggers.length&&<p className="junior-palette-description">No matching blocks. Try “move”, “wait”, “sound” or choose All blocks.</p>}
-            {!searching&&category==='control'&&<p className="junior-palette-description">If chooses what happens next. Put steps in Then for a true condition, and Otherwise for a false one. After that, the story continues.</p>}
-            {!searching&&category==='sound'&&<button className="junior-palette-block junior-palette-sound" onClick={()=>setAudioOpen(true)}><Mic size={25}/><strong>Your sounds</strong><span>Record / upload</span></button>}
-            {!searching&&category==='ai'&&<p className="junior-palette-description">Train or import a model in ML Studio first. Recognition uses the latest test sample or a microphone/camera started there. To react to a result, add Recognize, then a Control → If / otherwise block. This palette does not turn devices on.</p>}
-            {!searching&&category==='devices'&&<p className="junior-palette-description">Connect and configure a supported board in Boards & robots first. Pin numbers depend on the selected board.</p>}
-            <p className="junior-palette-help">Click a block to add it.<br/>Change its number to experiment.</p>
-          </div>
-        </div>
-      </div>
-
-      <aside className="junior-stage-panel" aria-label="Stage and character settings">
-        <div className="junior-stage-heading"><div><span className="junior-eyebrow">THE BIG PICTURE</span><h2>Your stage</h2></div><span className={`junior-engine-status ${ready ? 'junior-engine-ready' : ''}`}><i/>{ready ? 'Scratch engine' : 'Loading engine'}</span></div>
-        <div className="junior-stage-frame"><iframe key={stageRevision} ref={frame} data-duet-editor="junior" src={appPath('/scratch/index.html?mode=stage')} title="Junior Scratch stage" allow="autoplay"/>
-          {!ready && <div className="junior-stage-loading"><span className="junior-loading-dot"/>Getting the stage ready…</div>}</div>
-        <div className="junior-runbar"><button className="junior-run" disabled={!ready || busy} onClick={run}><Play size={18} fill="currentColor"/>{busy ? 'One moment…' : 'Play story'}</button>
-          <button className="junior-control-button" disabled={!ready} onClick={() => stop()} aria-label="Stop story" title="Stop story"><Square size={17} fill="currentColor"/></button>
-          <button className="junior-control-button" disabled={!ready || busy} onClick={() => stop(true)} aria-label="Reset starting positions" title="Reset starting positions"><RotateCcw size={19}/></button>
-          <span className="junior-run-caption">{running ? 'Watch it go!' : 'Your story starts here'}</span></div>
-        <div className="junior-status" role="status" aria-live="polite">{error || notice}{previewDirty&&<span className="junior-pending-edits">Edits saved. They appear after Stop or the next Play.</span>}</div><button className="junior-stage-restart" onClick={()=>restartStage()}><RotateCcw size={14}/>Restart stage</button>
-
+        <details className="junior-properties"><summary><SlidersHorizontal size={16}/>Edit character & scene</summary>
         <div className="junior-character-settings"><div className="junior-settings-heading"><img src={spriteURL(sprite)} alt=""/><div><label htmlFor="junior-sprite-name">YOUR CHARACTER</label><input id="junior-sprite-name" aria-label="Character name" maxLength={40} value={sprite.name} onChange={event => changeSprite({name: event.target.value})}/></div>
           <button className="junior-icon-button" disabled={scene.sprites.length < 2} aria-label="Remove selected character" title="Remove character" onClick={() => {
             const sprites = scene.sprites.filter(item => item.id !== sprite.id); setEditingPath([]);
@@ -393,6 +516,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus}) {
           <div className="junior-backdrop-options">{Object.entries(BACKDROP_ART).map(([kind, svg]) => <button key={kind} aria-pressed={!scene.backdropAssetId&&scene.background === kind} className={!scene.backdropAssetId&&scene.background === kind ? 'junior-selected' : ''} onClick={() => changeScene({background: kind,backdropAssetId:undefined})}><img src={artDataURL(svg)} alt=""/><span>{kind}</span></button>)}</div>
           <div className="junior-media-tools"><button disabled={mediaBusy} onClick={()=>chooseImage('backdrop')}><Upload size={14}/>Upload backdrop</button><button onClick={()=>setPainting('backdrop')}><Paintbrush size={14}/>Paint backdrop</button>{(current.assets||[]).some(a=>a.dataFormat==='png')&&<label>Saved image <select aria-label="Saved backdrop image" value={scene.backdropAssetId||''} onChange={e=>changeScene({backdropAssetId:e.target.value||undefined})}><option value="">Built-in backdrop</option>{current.assets.filter(a=>a.dataFormat==='png').map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>}</div>
         </div>
+        </details>
         <p className="junior-stage-note">Play starts at the selected scene. Go to scene blocks switch scenes and stop the old scene’s scripts. Tap characters to run their tap scripts. Click the stage, then press a key to run key scripts.</p>
       </aside>
     </div>

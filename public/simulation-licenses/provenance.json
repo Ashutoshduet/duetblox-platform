@@ -1,0 +1,28 @@
+{
+  "ngspiceCopyingUrl": "https://raw.githubusercontent.com/danchitnis/ngspice-sf-mirror/ngspice-45.2/COPYING",
+  "engineVersion": "1.9.0",
+  "engineBuildReported": "ngspice-45.2, Build Sat Oct 24 23:49:49 UTC 2026",
+  "buildSource": "https://github.com/eelab-dev/EEcircuit-engine/blob/424c21eb9f9bb91e72c1befe2d7fc2f09641316c/Docker/run.sh",
+  "note": "npm registry identifies the wrapper/source release gitHead. The installed WASM reportsngspice45.2; exact core source commit and full reproducible WASM toolchain metadata are not exposed by package metadata. Do not claim a byte-identical reproducible engine build. PDK notice extracts supplement the fullApache2 license.",
+  "eecircuitPackage": {
+    "name": "eecircuit-engine",
+    "version": "1.9.0",
+    "source": "https://github.com/eelab-dev/EEcircuit-engine",
+    "bundleSha256": "312b5504a87f0fd6f9d79c48734eeba8eb7aea1e8069916ecd4606cb6575db0b"
+  },
+  "avr8jsPackage": {
+    "name": "avr8js",
+    "version": "0.21.1",
+    "source": "https://github.com/wokwi/avr8js",
+    "license": "MIT"
+  },
+  "licenseFiles": {
+    "Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "avr8js-MIT.txt": "71d092fa8944eb36ce929756f620ee5bf31f119d5f78a6941dc04d48f504177b",
+    "eecircuit-engine-MIT.txt": "05b5629164ed0e846fd9f3ee34b64aced9d1ffef01e6fc30c39c8c68b9fea4ed",
+    "embedded-PDK-notices-extracted.txt": "618c7eb34ce24d0ee61aa5101a80a681594645086758460ef50e0855dd543f12",
+    "ngspice-45.2-COPYING.txt": "53e838832e7c00598bb86602a99f9644ba2060e19be209b52e60adb2c8eb6f77"
+  },
+  "npmSourceGitHead": "424c21eb9f9bb91e72c1befe2d7fc2f09641316c",
+  "sourceArchiveUrl": "https://github.com/eelab-dev/EEcircuit-engine/archive/424c21eb9f9bb91e72c1befe2d7fc2f09641316c.tar.gz"
+}

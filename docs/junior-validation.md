@@ -1,5 +1,21 @@
 # Junior editor validation
 
+## 24 November 2026: Junior redesign for 0.9.1
+
+The current redesign follows the supplied PictoBlox Junior screenshot's workspace hierarchy: one focused toolbar, a large dotted script canvas, a horizontal category/picture-block dock, and a right-hand stage with character and scene controls. DUETBlox retains its own artwork, project schema, compiler and official Scratch runtime. No PictoBlox code or media was copied, and pixel/feature parity is not claimed.
+
+Blank-canvas drops now create and position a script, or reuse the selected empty script. Start-event pieces can be placed on the canvas. Root blocks can move between scripts or detach into a new stack. Zoom is bounded to 60–140%; pointer movement/drop placement account for zoom and scroll. Edge scrolling, Arrange, keyboard stack positioning, block reordering and Undo/Redo remain available. A compact toolbar for short desktop viewports keeps those controls inside the visible canvas. Selecting characters, scenes or scripts no longer consumes editing history.
+
+The focused full-app Junior checks cover direct palette construction without importing a fixture, parameter editing, actual VM playback/reset, simultaneous flag scripts, nested repeat/forever behavior and Stop, character/scene separation, story/workspace export and reload, and desktop/laptop geometry. All six Junior scenarios passed in the final combined production suite, including the twenty-costume round-trip and visible sound-library check.
+
+Eight separate canvas checks passed: zoomed blank drops, zoomed stack movement, connected-sequence reordering, event-piece placement, cross-script movement with one-step Undo, long horizontal sequences, Arrange after scrolling, and a drop after horizontal scrolling. No page errors were captured. In emulated touch-enabled Chrome contexts at 390×844 and 820×1180, tap-to-add, editable numbers, category switching and reachable Play/Stop passed with no horizontal document overflow. This does not establish native touch dragging or physical mobile-device acceptance.
+
+Platform checks: **376 root unit/regression tests passed**, **31 official Scratch editor integration tests passed** using the correct `/duetblox/` base, and **all 22 final local production browser scenarios passed in 1.0 minute**, including actual cold-offline execution. The compact toolbar passed containment/hit tests and actual Undo/Redo at 1470×656, 1366×650, 1366×500 and 1440×900; the previous vertical toolbar could clip its top controls on short canvases. See [release 0.9.1](release-0.9.1.md) for scope and limits. Publication checks are recorded separately after upload.
+
+Evidence is retained locally in `work/junior-redesign-20261124/`, including `canvas-check.json`, `responsive-smoke.json`, `e2e-final.log`, `media-limits.log`, `editor-integration-final.log`, `desktop-preview.jpg`, and screenshots from actual app workflows. Historic reports below retain their original date and scope.
+
+## Historical validation: 16 October 2026
+
 Verified on 16 October 2026 in desktop Chrome against the Vite app at `http://127.0.0.1:5173`. Programs run in the official Scratch VM in a same-origin stage iframe. This is a substantial Junior implementation, not a claim of complete ScratchJr or PictoBlox parity.
 
 ## Implemented behavior
@@ -19,7 +35,7 @@ Imports validate supported block types, IDs, media checksums, PNG dimensions, WA
 
 ## Observed browser checks
 
-The latest checks used `src/junior/smoke.html`, which renders the actual JuniorEditor component and actual stage iframe. Its Read VM state action calls the documented bridge `getProject` command and displays actual VM targets in the page. All browser interaction used CUA; no external browser automation or injected application-state mutation was used.
+The October checks used `src/junior/smoke.html`, which renders the actual JuniorEditor component and actual stage iframe. Its Read VM state action calls the documented bridge `getProject` command and displays actual VM targets in the page. All browser interaction used CUA; no external browser automation or injected application-state mutation was used.
 
 | Check | Observed result |
 | --- | --- |
@@ -38,7 +54,7 @@ The latest checks used `src/junior/smoke.html`, which renders the actual JuniorE
 
 The prior integrated-app pass additionally covered Home → Junior, character/scene selection, complete `.duet` browser-library Save/Open, and browser reload persistence. That pass predates the v2 media/multiscript work; current whole-workspace acceptance is covered by the root integration checks.
 
-Latest evidence: `src/junior/qa-junior-v2.png` and `src/junior/qa-junior-v2-ax.txt`. The latter is a browser accessibility tree showing controls and state, **not** an automated axe or screen-reader conformance report. Earlier evidence is retained as `qa-root-junior.*`.
+October evidence: `src/junior/qa-junior-v2.png` and `src/junior/qa-junior-v2-ax.txt`. The latter is a browser accessibility tree showing controls and state, **not** an automated axe or screen-reader conformance report. Earlier evidence is retained as `qa-root-junior.*`.
 
 ## Automated checks
 

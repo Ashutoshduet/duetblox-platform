@@ -9,11 +9,13 @@ import {downloadBlob} from '../storage.js';
 import {uploadAdvice} from './advice.js';
 import LearningSteps from './LearningSteps.jsx';
 import ProjectMap from './ProjectMap.jsx';
+import CircuitLab from '../circuits/CircuitLab.jsx';
 import VirtualBoardLab from '../hardware/VirtualBoardLab.jsx';
 import './coding-tools.css';
 
 export default function CodingTools({getHardwareProject,modelRevision,iframe, ready, active, boardId, onBoardChange, boardLocked, onOpenBoards, onStatus,
   virtualBoard, simulationEnabled, destinationBusy, onSimulationChange, onVirtualStop, onVirtualReset, connected, onAddStarter, onRestartEditor}) {
+  const [virtualView,setVirtualView]=useState('wiring');
   const [panel, setPanel] = useState(null), [revision, setRevision] = useState(0);
   const [check, setCheck] = useState(null), [checking, setChecking] = useState(false), [error, setError] = useState('');
   const [watch, setWatch] = useState({values: [], total: 0}), [showCode, setShowCode] = useState(false);
@@ -85,7 +87,7 @@ export default function CodingTools({getHardwareProject,modelRevision,iframe, re
       <button disabled={!ready} aria-expanded={panel === 'upload'} onClick={() => toggle('upload')}><Code2 size={16}/> Board upload check</button>
       <button disabled={!ready||destinationBusy||(!simulationEnabled&&boardLocked)} aria-expanded={panel==='virtual'} className={simulationEnabled?'virtual-selected':''} onClick={()=>simulationEnabled?toggle('virtual'):onSimulationChange(true)}><FlaskConical size={16}/>{simulationEnabled?'Virtual board on':'Try virtual board'}</button>
     </div>
-    {panel && <section className="coding-inspector" aria-label={regions[panel]}>
+    {panel && <section className={`coding-inspector ${panel==='virtual'?'with-circuit':''}`} aria-label={regions[panel]}>
       <div className="coding-inspector-heading"><h2>{titles[panel]}</h2><button aria-label="Close coding help" onClick={() => setPanel(null)}><X size={18}/></button></div>
       {error && <p role="alert" className="coding-error">{error}</p>}
       {panel==='library'&&<BlockLibrary command={command} onStatus={onStatus} onClose={()=>setPanel(null)}/>}
@@ -93,7 +95,7 @@ export default function CodingTools({getHardwareProject,modelRevision,iframe, re
       {panel==='recovery'&&<><p>Try Stop first. If the editor still does not respond, restart it from the last saved snapshot. Recent edits since the last autosave may be lost. Your ML models, Junior story and downloaded projects are kept.</p><div className="coding-actions"><button className="small-button" disabled={!ready} onClick={()=>runEditor('stopAll')}>Stop all scripts</button><button className="small-button" disabled={destinationBusy} onClick={()=>{setPanel(null);onRestartEditor();}}>Restart from saved snapshot</button></div></>}
       {panel==='map'&&<ProjectMap iframe={iframe} ready={ready} active={active} revision={revision}/>}
       {panel==='learning'&&<LearningSteps iframe={iframe} ready={ready} active={active} onStatus={onStatus}/>}
-      {panel==='virtual'&&simulationEnabled&&<><div className="studio-starter"><button className="small-button" onClick={()=>onAddStarter('blink')}>Add LED test blocks</button><button className="small-button" disabled={!board?.analogPins?.length} onClick={()=>onAddStarter('sensor')}>Add sensor test blocks</button><span>Add an example, then Run. Change inputs below and watch output commands.</span></div><VirtualBoardLab service={virtualBoard} onStop={onVirtualStop} onReset={onVirtualReset} onDisable={()=>onSimulationChange(false)}/></>}
+      {panel==='virtual'&&simulationEnabled&&<><div className="studio-starter"><button className="small-button" onClick={()=>onAddStarter('blink')}>Add LED test blocks</button><button className="small-button" disabled={!board?.analogPins?.length} onClick={()=>onAddStarter('sensor')}>Add sensor test blocks</button><span>Add an example, then Run. Change inputs below and watch output commands.</span></div><div className="circuit-view-switch" role="group" aria-label="Simulation view"><button aria-pressed={virtualView==='wiring'} onClick={()=>setVirtualView('wiring')}>Wiring & components</button><button aria-pressed={virtualView==='pins'} onClick={()=>setVirtualView('pins')}>Pin monitor</button><button onClick={()=>onSimulationChange(false)}>Turn simulation off</button></div>{virtualView==='wiring'?<CircuitLab service={virtualBoard} disabled={destinationBusy} onStatus={onStatus} boardLocked={boardLocked} onBoardChange={onBoardChange}/>:<VirtualBoardLab service={virtualBoard} onStop={onVirtualStop} onReset={onVirtualReset} onDisable={()=>onSimulationChange(false)}/>}</>}
       {panel === 'upload' ? <>
         <p>Checks the current blocks for <strong>{board?.name}</strong>. This does not compile or upload. Your existing block values are preserved when changing boards.</p>
         <div className="coding-check-heading" role="status">{checking ? <span>Checking current blocks…</span> : check?.ok ? <strong className="coding-success"><CheckCircle2 size={18}/> Supported for code generation</strong> : check ? <strong><AlertCircle size={18}/> {check.diagnostics.length} {check.diagnostics.length === 1 ? 'issue' : 'issues'} to resolve</strong> : <span>Waiting for the editor…</span>}<button aria-label="Check program again" disabled={checking} onClick={() => setRevision(v => v + 1)}><RefreshCw size={15}/></button></div>

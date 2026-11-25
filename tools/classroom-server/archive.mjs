@@ -30,6 +30,6 @@ export function validateProjectArchive(bytes,name){
  if(cursor!==end||!manifest)fail('The project manifest is missing.');
  if(manifestName==='project.json'){
   if(!Array.isArray(manifest.targets)||manifest.targets.filter(t=>t?.isStage===true).length!==1||manifest.targets.some(t=>!t||typeof t!=='object'))fail('Invalid Scratch project.');
- }else if(manifest.kind!=='duetblox-project'||!Number.isInteger(manifest.version)||manifest.version<1||manifest.version>4)fail('Unsupported DUETBlox project.');
+ }else if(manifest.kind!=='duetblox-project'||!Number.isInteger(manifest.version)||manifest.version<1||manifest.version>5)fail('Unsupported DUETBlox project.');
  return {type:manifestName==='project.json'?'sb3':'duet',expandedBytes:total};
 }

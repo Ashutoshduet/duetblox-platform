@@ -1,3 +1,5 @@
+import {emptyCircuit,validateCircuit,validateCircuitLibrary} from './circuits/model.js';
+import {defaultSpiceProject,validateSpiceProject} from './spice/model.js';
 import JSZip from 'jszip';
 import {makeJuniorProject,parseJuniorProject} from './junior/model.js';
 import {getBoard} from './hardware/boards.js';
@@ -27,8 +29,11 @@ export async function replaceScratchProject(send,sb3,persist=async()=>{}){
 }
 export async function parseWorkspace(data){
  const zip=await JSZip.loadAsync(data);let expanded=0;const modelSizes=new Map();for(const entry of Object.values(zip.files)){if(entry.dir)continue;const size=entry._data?.uncompressedSize;if(!Number.isSafeInteger(size)||size<0||(expanded+=size)>200*1024*1024)throw new Error('The expanded DUETBlox workspace exceeds 200 MB.');const modelEntry=entry.name.match(/^ml\/(?:(sound|pose|objects)\/)?(?:model\.json|weights\.bin|metadata\.json)$/);if(modelEntry){const kind=modelEntry[1]||'image',modelSize=(modelSizes.get(kind)||0)+size;modelSizes.set(kind,modelSize);if(modelSize>100*1024*1024)throw new Error('A workspace model exceeds 100 MB.');}}const manifestFile=zip.file('duetblox.json');if(!manifestFile)throw new Error('Choose a DUETBlox .duet project or a Scratch .sb3 file.');if(manifestFile._data.uncompressedSize>30*1024*1024)throw new Error('The workspace manifest exceeds 30 MB.');
- const manifest=JSON.parse(await manifestFile.async('string'));if(manifest.kind!=='duetblox-project'||![1,2,3,4].includes(manifest.version))throw new Error('This project version is not supported.');
+ const manifest=JSON.parse(await manifestFile.async('string'));if(manifest.kind!=='duetblox-project'||![1,2,3,4,5].includes(manifest.version))throw new Error('This project version is not supported.');
  const junior=manifest.junior?parseJuniorProject(manifest.junior):makeJuniorProject();const board=getBoard(manifest.board)?manifest.board:'arduino-uno';
+ const circuit=manifest.circuit?validateCircuit(manifest.circuit):emptyCircuit(getBoard(board)?.live?board:'arduino-uno');
+ const circuitLibrary=manifest.circuitLibrary?validateCircuitLibrary(manifest.circuitLibrary):validateCircuitLibrary({kind:'duetblox-circuit-library',version:1,activeBoardId:circuit.boardId,circuits:{[circuit.boardId]:circuit}});
+ const spice=manifest.spice?validateSpiceProject(manifest.spice):defaultSpiceProject();
  const datasetFile=zip.file('ml/dataset.json');const dataset=datasetFile?JSON.parse(await datasetFile.async('string')):emptyDataset();validateDataset(dataset);
  const modalities={};for(const [kind,defaults,validate] of [['sound',defaultSoundClasses,validateSoundDataset],['pose',defaultPoseClasses,validatePoseDataset]]){const entry=zip.file(`ml/${kind}/dataset.json`);const dataset=entry?JSON.parse(await entry.async('string')):{kind:`duetblox-${kind}-dataset`,version:1,classes:defaults()};validate(dataset);modalities[kind]={dataset,model:await modelFromZip(zip,`ml/${kind}/`,kind)};}
  const textDatasetFile=zip.file('ml/text/dataset.json');const textDataset=textDatasetFile?JSON.parse(await textDatasetFile.async('string')):{kind:'duetblox-text-dataset',version:1,classes:defaultTextClasses()};validateTextDataset(textDataset);
@@ -41,5 +46,5 @@ export async function parseWorkspace(data){
  const evaluations={};for(const kind of ['image','sound','pose']){const prefix=kind==='image'?'ml/':`ml/${kind}/`;const entry=zip.file(`${prefix}evaluation.json`);const evaluation=entry?JSON.parse(await entry.async('string')):null;if(evaluation)validateEvaluationDataset(evaluation,kind);evaluations[kind]=evaluation;if(kind!=='image')modalities[kind].evaluation=evaluation;}
  const model=await modelFromZip(zip,'ml/');const projectFile=zip.file('project.sb3');let sb3=null;
  if(projectFile){if(projectFile._data?.uncompressedSize>MAX_SCRATCH_BYTES)throw new Error('The Scratch archive exceeds 100 MB.');const projectBytes=await projectFile.async('uint8array');await validateScratchArchive(projectBytes);sb3=await projectFile.async('base64');}
- return {name:String(manifest.name||'Untitled project').slice(0,100),junior,board,python,dataset,model,sb3,evaluation:evaluations.image,...modalities};
+ return {name:String(manifest.name||'Untitled project').slice(0,100),junior,board,python,circuit:circuitLibrary.circuits[circuitLibrary.activeBoardId],circuitLibrary,spice,dataset,model,sb3,evaluation:evaluations.image,...modalities};
 }

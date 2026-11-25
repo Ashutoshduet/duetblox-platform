@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'.',testMatch:'*.spec.js',timeout:30000,workers:1,reporter:'line',use:{baseURL:process.env.DUETBLOX_TEST_URL||'http://127.0.0.1:5224/duetblox/',channel:'chrome',viewport:{width:1000,height:800},screenshot:'only-on-failure',trace:'retain-on-failure'},outputDir:'../../work/playwright-feedback-20261124/junior/dialog-tests'});
