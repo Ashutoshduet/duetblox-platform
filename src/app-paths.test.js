@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile, copyFile, mkdir, mkdtemp, writeFile, symlink, rm} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {appPath,normalizeAppBase} from './app-paths.js';
 
 test('deployment base accepts root and nested directories, never URLs or traversal', () => {
@@ -44,14 +47,36 @@ test('app paths cannot turn a bundled request into another origin or escape the 
   }
 });
 
-test('Vite uses the build environment base and rejects unsafe deployment values', () => {
-  const cwd = new URL('../', import.meta.url);
-  const configBase = value => execFileSync(process.execPath,
-    ['--input-type=module', '-e', "import config from './vite.config.js';process.stdout.write(config.base);"],
-    {cwd, env:{...process.env, DUETBLOX_BASE_PATH:value}, encoding:'utf8', stdio:['ignore','pipe','pipe']});
-  assert.equal(configBase('/'), '/');
-  assert.equal(configBase('/duetblox/'), '/duetblox/');
-  assert.throws(() => configBase('https://example.org/'));
+test('Vite uses a matching generated runtime and rejects unsafe or mismatched deployment values', async () => {
+  // Import the real config in an isolated checkout-shaped fixture. Do not
+  // rewrite the active build's entry metadata while other tests use its files.
+  const cwd = await mkdtemp(path.join(tmpdir(), 'duet-vite-base-'));
+  const entryPath = '/scratch/index-0123456789abcdef0123.html';
+  const metadata = path.join(cwd, 'public/scratch/runtime-entry.json');
+  const config = value => JSON.parse(execFileSync(process.execPath,
+    ['--input-type=module', '-e', "import config from './vite.config.js';process.stdout.write(JSON.stringify({base:config.base,entry:config.define.__DUET_SCRATCH_ENTRY_PATH__}));"],
+    {cwd, env:{...process.env, DUETBLOX_BASE_PATH:value}, encoding:'utf8', stdio:['ignore','pipe','pipe']}));
+  const failsWith = pattern => error => Boolean(error.stderr?.toString().match(pattern));
+  try {
+    await mkdir(path.join(cwd, 'src'), {recursive: true});
+    await mkdir(path.dirname(metadata), {recursive: true});
+    await writeFile(path.join(cwd, 'package.json'), '{"type":"module"}\n');
+    await copyFile(new URL('../vite.config.js', import.meta.url), path.join(cwd, 'vite.config.js'));
+    await copyFile(new URL('./app-paths.js', import.meta.url), path.join(cwd, 'src/app-paths.js'));
+    await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), path.join(cwd, 'node_modules'), 'dir');
+    for (const basePath of ['/', '/duetblox/', '/school/apps/']) {
+      await writeFile(metadata, JSON.stringify({version: 1, basePath, path: entryPath}));
+      assert.deepEqual(config(basePath), {base: basePath, entry: JSON.stringify(entryPath)});
+    }
+    assert.throws(() => config('https://example.org/'), failsWith(/DUETBLOX_BASE_PATH must be/));
+    assert.throws(() => config('/'), failsWith(/Scratch runtime does not match/));
+    for (const invalid of ['/scratch/index.html', '/outside/index-0123456789abcdef0123.html', '//example.org/index-0123456789abcdef0123.html']) {
+      await writeFile(metadata, JSON.stringify({version: 1, basePath: '/', path: invalid}));
+      assert.throws(() => config('/'), failsWith(/Scratch runtime does not match/));
+    }
+    await rm(metadata);
+    assert.throws(() => config('/'), failsWith(/Build the Scratch runtime before starting/));
+  } finally {await rm(cwd, {recursive: true, force: true});}
 });
 
 test('HTML shell and font stylesheet resolve within both root and subpath deployments', async () => {

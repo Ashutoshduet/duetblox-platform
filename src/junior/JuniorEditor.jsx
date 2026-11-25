@@ -1,4 +1,6 @@
 import {appPath} from '../app-paths.js';
+import {scratchEntryURL} from '../scratch-entry.js';
+import {supportsJuniorCompletion} from '../scratch-protocol.js';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Clock3, Download, Flag, Image, MessageCircle,
   Play, Plus, Repeat2, RotateCcw, RotateCw, Square, Trash2, Upload, Volume2, X, ArrowUp, ArrowDown, Home, Eye, EyeOff, Maximize, Minimize, Gauge, Send, Hand, Infinity, Paintbrush, Pen, Mic, BrainCircuit, Cpu, Layers, Undo2, Redo2, Copy, GitBranch, Search, Keyboard, CornerUpLeft, Grid3X3, Expand, SlidersHorizontal, FolderOpen, Save, HelpCircle, ChevronDown} from 'lucide-react';
@@ -119,6 +121,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
   const [dragging,setDragging]=useState(false),[dropGap,setDropGap]=useState(null),[showGrid,setShowGrid]=useState(false);
   const stagePanel=useRef(null);
   const [ready, setReady] = useState(false);
+  const [stageOutdated, setStageOutdated] = useState(false);
   const [running, setRunning] = useState(false);
   const [challenge, setChallenge] = useState(''), [challengeNotice, setChallengeNotice] = useState('');
   const celebrationRun = useRef(null), challengeRef = useRef(challenge);
@@ -284,7 +287,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
     celebrationRun.current=null;celebrations.clear(mascotScope);
     actionEpoch.current++;stageQueue.current?.reset();clearTimeout(previewTimer.current);loadedPreview.current=null;
     for(const task of pending.current.values()){clearTimeout(task.timeout);task.reject(new Error('The stage was restarted.'));}pending.current.clear();
-    actionInProgress.current=false;runningRef.current=false;setRunning(false);setBusy(false);setReady(false);setPreviewDirty(false);setStageRevision(value=>value+1);announce(message);
+    actionInProgress.current=false;runningRef.current=false;setRunning(false);setBusy(false);setReady(false);setStageOutdated(false);setPreviewDirty(false);setStageRevision(value=>value+1);announce(message);
   }
 
   useEffect(() => {
@@ -292,7 +295,13 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
     function handleMessage(event) {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow || event.data?.channel !== 'duetblox') return;
       const {type, requestId, payload} = event.data;
-      if (type === 'ready') {stageWindow.current=event.source;setReady(true);setError('');setNotice('Ready to make something wonderful.');return;}
+      if (type === 'ready') {
+        stageWindow.current=event.source;
+        const compatible=supportsJuniorCompletion(payload);
+        setStageOutdated(!compatible);setReady(compatible);
+        if(!compatible){celebrationRun.current=null;setError('This coding stage is an older version. Save your project, reconnect to the internet, then update DUETBlox.');return;}
+        setError('');setNotice('Ready to make something wonderful.');return;
+      }
       if (type === 'juniorComplete') {
         const run = celebrationRun.current;
         if (!completedRunMatches(payload, run)) return;
@@ -334,7 +343,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
 
   useEffect(() => {celebrationRun.current = null; setChallengeNotice(''); celebrations.clear(mascotScope);}, [current.id, current.selectedSceneId]);
 
-  useEffect(()=>{if(ready)return;const timer=setTimeout(()=>setError('The stage is taking longer to start. Use Restart stage to try again; your story is kept.'),20000);return()=>clearTimeout(timer);},[ready,stageRevision]);
+  useEffect(()=>{if(ready||stageOutdated)return;const timer=setTimeout(()=>setError('The stage is taking longer to start. Use Restart stage to try again; your story is kept.'),20000);return()=>clearTimeout(timer);},[ready,stageOutdated,stageRevision]);
 
   // Edits during playback are saved without tearing down a running VM.
   // Idle previews coalesce; they never build an unbounded queue of full projects.
@@ -502,15 +511,16 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
       </div>
 
       <aside ref={stagePanel} className="junior-stage-panel" aria-label="Stage and character settings">
-        <div className="junior-stage-heading"><h2>{scene.name}</h2><span className={`junior-engine-status ${ready ? 'junior-engine-ready' : ''}`}><i/>{ready ? 'Ready to play' : 'Getting ready'}</span></div>
-        <div className="junior-stage-frame"><iframe key={stageRevision} ref={frame} data-duet-editor="junior" src={appPath('/scratch/index.html?mode=stage')} title="Junior Scratch stage" allow="autoplay"/>
+        <div className="junior-stage-heading"><h2>{scene.name}</h2><span className={`junior-engine-status ${ready ? 'junior-engine-ready' : ''}`}><i/>{ready ? 'Ready to play' : stageOutdated ? 'Update needed' : 'Getting ready'}</span></div>
+        <div className="junior-stage-frame"><iframe key={stageRevision} ref={frame} data-duet-editor="junior" src={scratchEntryURL('?mode=stage')} title="Junior Scratch stage" allow="autoplay"/>
           {showGrid&&<div className="junior-stage-grid" aria-hidden="true"><span className="junior-grid-origin">0, 0</span><span className="junior-grid-scale">20 pixels per square</span></div>}
-          {!ready && <div className="junior-stage-loading"><span className="junior-loading-dot"/>Getting the stage ready…</div>}</div>
+          {!ready && <div className="junior-stage-loading"><span className="junior-loading-dot"/>{stageOutdated?'This stage needs an update':'Getting the stage ready…'}</div>}</div>
         <div className="junior-runbar"><button className="junior-run" disabled={!ready || busy} onClick={run}><Flag size={23} fill="currentColor"/>{busy ? 'One moment…' : 'Play story'}</button>
           <button className="junior-control-button" disabled={!ready} onClick={() => stop()} aria-label="Stop story" title="Stop story"><Square size={17} fill="currentColor"/></button>
           <button className="junior-control-button" disabled={!ready || busy} onClick={() => stop(true)} aria-label="Reset starting positions" title="Reset starting positions"><RotateCcw size={19}/></button>
           <button className="junior-control-button" aria-label="Show stage grid" title="Show stage grid" aria-pressed={showGrid} onClick={()=>setShowGrid(!showGrid)}><Grid3X3 size={22}/></button><button className="junior-control-button" aria-label="Expand stage" title="Expand stage" onClick={expandStage}><Expand size={22}/></button><span className="junior-run-caption">{running ? 'Playing' : 'Ready'}</span></div>
         <div className="junior-status" role="status" aria-live="polite">{error || notice}{previewDirty&&<span className="junior-pending-edits">Edits saved. They appear after Stop or the next Play.</span>}</div><button className="junior-stage-restart" onClick={()=>restartStage()}><RotateCcw size={14}/>Restart stage</button>
+        {stageOutdated&&<a className="junior-stage-restart" href={appPath('update.html')} target="_blank" rel="noopener noreferrer">Update DUETBlox</a>}
         <MascotCompanion scope={mascotScope} suspended={running || busy}/>
         <details className="junior-challenge"><summary>Try a small challenge</summary><div>
           <label>Story goal<select aria-label="Story goal" disabled={running || busy} value={challenge} onChange={event=>{setChallenge(event.target.value);setChallengeNotice('');celebrations.clear(mascotScope);}}><option value="">Free play · your own ideas</option>{Object.entries(JUNIOR_CHALLENGES).map(([id,goal])=><option key={id} value={id}>{goal.title}</option>)}</select></label>

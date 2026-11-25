@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 import {patchHullFormat} from './hardening.mjs';
 import {patchFaceSensingAssets, faceSensingAssetNames, faceSensingSolutionPath} from './face-sensing-assets.mjs';
 import {patchSandboxDelivery} from './sandbox-delivery.mjs';
+import {writeVersionedScratchEntry} from './versioned-entry.mjs';
 import {appPath, normalizeAppBase} from '../../../src/app-paths.js';
 const appBase = normalizeAppBase(process.env.DUETBLOX_BASE_PATH || '/');
 const require = createRequire(import.meta.url);
@@ -54,7 +55,6 @@ for (const name of ['@scratch/scratch-gui','@scratch/scratch-vm','@scratch/scrat
   }
 }
 for (const file of ['editor.css','duetblox-logo.svg']) await fs.copyFile(path.join(root, 'src', file), path.join(output, file));
-await fs.writeFile(path.join(output, 'index.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DUETBlox · Block editor</title><link rel="stylesheet" href="./editor.css"></head><body><main id="app"><p style="padding:24px;color:#53536b">Opening DUETBlox…</p></main><script src="./duetblox-editor.js"></script></body></html>`);
 const webpack = require('webpack');
 const config = require('../webpack.config.cjs');
 config.output.publicPath = appPath('scratch/', appBase);
@@ -63,4 +63,6 @@ await new Promise((resolve, reject) => webpack(config, (error, stats) => {
   if (error || stats.hasErrors()) reject(error || new Error(stats.toString({all: false, errors: true})));
   else { console.log(stats.toString({all: false, timings: true, assets: true, warnings: true})); resolve(); }
 }));
+const entry = await writeVersionedScratchEntry(output, appBase);
+console.log(`Versioned Scratch entry: ${appPath(entry.path, appBase)}`);
 console.log(`Official Scratch editor output: ${output}`);

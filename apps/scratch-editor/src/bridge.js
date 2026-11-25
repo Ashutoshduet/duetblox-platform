@@ -1,6 +1,7 @@
 import {cacheDefaultProject} from './default-project';
 import {createExecutionControls} from './execution-controls';
 import {createJuniorCompletionTracker,JUNIOR_ACTION_TYPES,JUNIOR_CANCEL_VARIABLE,juniorActionVariable} from '../../../src/junior/completion.js';
+import {SCRATCH_BRIDGE_CAPABILITIES} from '../../../src/scratch-protocol.js';
 const CHANNEL = 'duetblox';
 const COMMANDS = new Set(['loadProject', 'resetProject', 'saveProject', 'getProject', 'greenFlag', 'stopAll', 'status', 'addExtension', 'keyboard', 'ping', 'setBoard', 'showBlock', 'watchValues', 'learningCheck', 'learningStart', 'learningStep', 'learningResume', 'learningStop', 'learningStatus', 'setEditorTab', 'setEditorMenu', 'getBlockCategories', 'selectBlockCategory']);
 const builtins = new Set(['pen', 'music', 'videoSensing', 'faceSensing', 'text2speech', 'translate', 'microbit', 'wedo2', 'ev3', 'boost', 'makeymakey', 'gdxfor']);
@@ -45,7 +46,7 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
       post('extensionRequest', {extension, method, args}, requestId);
     }).catch(error => { juniorCompletion.cancel(); post('extensionError', {extension, method, message: error.message}); throw error; });
   }
-  const snapshot = () => ({mode, running: vm.runtime.threads.some(t => !t.updateMonitor), targets: vm.runtime.targets.filter(t => t.isOriginal).map(t => ({id: t.id, name: t.getName(), isStage: t.isStage, x: t.x, y: t.y})), extensions: [...vm.extensionManager._loadedExtensions.keys()], ...(learning ? {learning: learning.snapshot()} : {})});
+  const snapshot = () => ({mode, capabilities: SCRATCH_BRIDGE_CAPABILITIES, running: vm.runtime.threads.some(t => !t.updateMonitor), targets: vm.runtime.targets.filter(t => t.isOriginal).map(t => ({id: t.id, name: t.getName(), isStage: t.isStage, x: t.x, y: t.y})), extensions: [...vm.extensionManager._loadedExtensions.keys()], ...(learning ? {learning: learning.snapshot()} : {})});
   const handlers = {
     getBlockCategories: () => {
       if (mode !== 'editor' || !onGetBlockCategories) throw new Error('The block menu is available in the normal block editor.');
