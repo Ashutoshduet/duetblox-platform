@@ -1,5 +1,6 @@
 import {cacheDefaultProject} from './default-project';
 import {createExecutionControls} from './execution-controls';
+import {createJuniorCompletionTracker,JUNIOR_ACTION_TYPES,JUNIOR_CANCEL_VARIABLE,juniorActionVariable} from '../../../src/junior/completion.js';
 const CHANNEL = 'duetblox';
 const COMMANDS = new Set(['loadProject', 'resetProject', 'saveProject', 'getProject', 'greenFlag', 'stopAll', 'status', 'addExtension', 'keyboard', 'ping', 'setBoard', 'showBlock', 'watchValues', 'learningCheck', 'learningStart', 'learningStep', 'learningResume', 'learningStop', 'learningStatus', 'setEditorTab', 'setEditorMenu', 'getBlockCategories', 'selectBlockCategory']);
 const builtins = new Set(['pen', 'music', 'videoSensing', 'faceSensing', 'text2speech', 'translate', 'microbit', 'wedo2', 'ev3', 'boost', 'makeymakey', 'gdxfor']);
@@ -15,6 +16,23 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
   const post = (type, payload = {}, requestId) => {
     if (window.parent !== window) window.parent.postMessage({channel: CHANNEL, type, payload, ...(requestId ? {requestId} : {})}, parentOrigin);
   };
+  const juniorCompletion = createJuniorCompletionTracker({
+    readState: () => {
+      const stage = vm.runtime.getTargetForStage();
+      if (!stage) return null;
+      return {
+        sceneId: stage.variables['junior-active-scene']?.value,
+        cancelled: stage.variables[JUNIOR_CANCEL_VARIABLE]?.value,
+        actions: Object.fromEntries(JUNIOR_ACTION_TYPES.map(type => [type, stage.variables[juniorActionVariable(type)]?.value])),
+        running: vm.runtime.threads.some(thread => !thread.updateMonitor),
+        targets: vm.runtime.targets.filter(target => target.isOriginal).map(target => ({
+          id: target.id, name: target.getName(), isStage: target.isStage,
+          x: target.x, y: target.y, direction: target.direction, size: target.size, visible: target.visible
+        }))
+      };
+    },
+    onComplete: payload => post('juniorComplete', payload)
+  });
   const learning = mode === 'editor' ? createExecutionControls(vm, {onChange: state => post('learningStatus', state), onShowBlocks}) : null;
   const requireLearning = () => {if (!learning) throw new Error('Learning steps are available in the normal block editor.'); return learning;};
   window.addEventListener('pagehide', () => learning?.dispose(), {once: true});
@@ -25,7 +43,7 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
       const timeout = setTimeout(() => { pending.delete(requestId); reject(new Error(`${extension} did not respond. Open its workspace and check the connection.`)); }, 30000);
       pending.set(requestId, {resolve, reject, timeout});
       post('extensionRequest', {extension, method, args}, requestId);
-    }).catch(error => { post('extensionError', {extension, method, message: error.message}); throw error; });
+    }).catch(error => { juniorCompletion.cancel(); post('extensionError', {extension, method, message: error.message}); throw error; });
   }
   const snapshot = () => ({mode, running: vm.runtime.threads.some(t => !t.updateMonitor), targets: vm.runtime.targets.filter(t => t.isOriginal).map(t => ({id: t.id, name: t.getName(), isStage: t.isStage, x: t.x, y: t.y})), extensions: [...vm.extensionManager._loadedExtensions.keys()], ...(learning ? {learning: learning.snapshot()} : {})});
   const handlers = {
@@ -89,6 +107,7 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
     ping: () => ({mode}),
     status: snapshot,
     loadProject: async payload => {
+      juniorCompletion.configure(null);
       if (payload.project == null) throw new Error('A project is required.');
       vm.stopAll();
       for (const asset of payload.assets || []) {
@@ -103,9 +122,11 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
       await vm.loadProject(data);
       vm.emitWorkspaceUpdate();
       vm.emitTargetsUpdate();
+      if (mode === 'stage' && payload.project?.meta?.agent === 'DuetBlox Junior') juniorCompletion.configure(payload.juniorCompletion);
       return snapshot();
     },
     resetProject: async () => {
+      juniorCompletion.configure(null);
       vm.stopAll();
       await vm.loadProject(JSON.stringify(cacheDefaultProject(vm.runtime.storage)));
       vm.emitWorkspaceUpdate(); vm.emitTargetsUpdate();
@@ -117,8 +138,13 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
       return {base64: bytesBase64(bytes), mimeType: 'application/x.scratch.sb3', filename: 'DUETBlox-project.sb3'};
     },
     getProject: () => ({project: JSON.parse(vm.toJSON())}),
-    greenFlag: () => { vm.runtime.audioEngine?.audioContext?.resume(); vm.greenFlag(); return snapshot(); },
-    stopAll: () => { vm.stopAll(); return snapshot(); },
+    greenFlag: (payload, requestId) => {
+      vm.runtime.audioEngine?.audioContext?.resume();
+      vm.greenFlag();
+      juniorCompletion.begin(payload.runId || requestId);
+      return snapshot();
+    },
+    stopAll: () => { juniorCompletion.cancel(); vm.stopAll(); return snapshot(); },
     keyboard: payload => { vm.postIOData('keyboard', {key: payload.key, isDown: Boolean(payload.isDown)}); return {}; },
     addExtension: async payload => {
       if (!['duetHardware','duetML','duetSound','duetPose','duetText','duetNumbers','duetClassroom','duetData','duetObjects'].includes(payload.id) && !builtins.has(payload.id)) throw new Error('This extension is not in the DUETBlox catalog.');
@@ -143,7 +169,7 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
     // Stop must remain usable while an asset import/export or extension is
     // waiting. Invalidate older queued Run requests before awaiting readiness,
     // otherwise one could silently start the program after the student stops.
-    if (type === 'stopAll') executionGeneration++;
+    if (type === 'stopAll') { executionGeneration++; juniorCompletion.cancel(); }
     const requestedGeneration = executionGeneration;
     const run = async () => {
       try {
@@ -151,9 +177,12 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
         if (executionCommands.has(type) && requestedGeneration !== executionGeneration) {
           throw new Error('Run cancelled because Stop was pressed. Press Run again when you are ready.');
         }
-        post('result', await handlers[type](payload), requestId);
+        post('result', await handlers[type](payload, requestId), requestId);
       }
-      catch (error) { post('error', {command: type, message: error.message || String(error)}, requestId); }
+      catch (error) {
+        if (executionCommands.has(type) || type === 'loadProject' || type === 'resetProject') juniorCompletion.cancel();
+        post('error', {command: type, message: error.message || String(error)}, requestId);
+      }
     };
     if (priorityCommands.has(type)) run();
     else queue = queue.then(run, run);
@@ -166,11 +195,11 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
       .some(id => target.blocks.getBlock(id)?.opcode === 'duetHardware_whenBoardStarts'));
     if (hasUploadScript) post('warning', {code: 'board-start-upload-only', message: 'Board-start scripts run only after compilation/upload. Use “when green flag clicked” for the browser or Virtual Board Lab.'});
   });
-  vm.runtime.on('PROJECT_RUN_START', () => post('status', {running: true, mode}));
-  vm.runtime.on('PROJECT_RUN_STOP', () => post('status', {running: false, mode}));
-  vm.runtime.on('PROJECT_STOP_ALL', () => post('status', {running: false, stopped: true, mode}));
+  vm.runtime.on('PROJECT_RUN_START', () => { juniorCompletion.started(); post('status', {running: true, mode}); });
+  vm.runtime.on('PROJECT_RUN_STOP', () => { post('status', {running: false, mode}); juniorCompletion.finish(); });
+  vm.runtime.on('PROJECT_STOP_ALL', () => { juniorCompletion.cancel(); post('status', {running: false, stopped: true, mode}); });
   vm.runtime.on('PROJECT_CHANGED', () => post('changed', {mode}));
-  vm.runtime.on('DUET_EXTENSION_ERROR', detail => post('extensionError', detail));
+  vm.runtime.on('DUET_EXTENSION_ERROR', detail => { juniorCompletion.cancel(); post('extensionError', detail); });
   return {rpc, post, snapshot};
 }
 

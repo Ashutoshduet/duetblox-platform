@@ -1,5 +1,6 @@
 import {ASSET_IDS,BACKDROP_ART,BEEP_BASE64,SPRITE_ART} from './assets.js';
 import {BLOCK_TYPES,boundedNumber,MESSAGE_COLORS,JUNIOR_KEYS,validateJuniorCondition} from './model.js';
+import {JUNIOR_ACTION_TYPES,JUNIOR_CANCEL_VARIABLE,juniorActionVariable,completedJuniorAction} from './completion.js';
 const SCENE='junior-active-scene',SPEED='junior-speed';
 const msg=name=>({_broadcast:name});
 const expr=(op,inputs={},fields={})=>({op,inputs,fields});
@@ -31,7 +32,7 @@ function customCostume(asset,name,backdrop=false){return {name,assetId:asset.id,
 function soundRef(asset){return {name:asset.name,assetId:asset.id,dataFormat:'wav',format:'',rate:asset.rate,sampleCount:asset.sampleCount,md5ext:`${asset.id}.wav`};}
 const chime={id:ASSET_IDS.beep,name:'Chime',dataFormat:'wav',rate:8000,sampleCount:1280};
 /** One real Scratch project contains every scene; native broadcasts coordinate scene lifecycles. */
-export function compileJuniorProject(project){
+export function compileJuniorProject(project,{trackCompletion=false}={}){
  const scenes=project.scenes;if(!scenes?.length)throw new Error('Choose a scene first.');
  const initial=scenes.find(s=>s.id===project.selectedSceneId)||scenes[0],assets=new Map(),media=new Map((project.assets||[]).map(a=>[a.id,a])),broadcasts={};
  const add=(key,value)=>assets.set(key,value);
@@ -46,7 +47,8 @@ export function compileJuniorProject(project){
  stageBuild.hat('junior-stage-flag','event_whenflagclicked',{},sceneCommands(initial));
  scenes.forEach((scene,i)=>{broadcasts[goName(scene.id)]=goName(scene.id);stageBuild.hat(`junior-stage-go-${i}`,'event_whenbroadcastreceived',{BROADCAST_OPTION:[goName(scene.id),goName(scene.id)]},sceneCommands(scene),220+i*180);});
  const common={lists:{},comments:{},volume:100};
- const stage={...common,isStage:true,name:'Stage',variables:{[SCENE]:['Scene',initial.id]},broadcasts,blocks:stageBuild.blocks,costumes,sounds:[],currentCostume:scenes.indexOf(initial),layerOrder:0,tempo:60,videoTransparency:50,videoState:'off',textToSpeechLanguage:null};
+ const trackingVariables=trackCompletion?Object.fromEntries([JUNIOR_CANCEL_VARIABLE,...JUNIOR_ACTION_TYPES.map(juniorActionVariable)].map(id=>[id,[id,0]])):{};
+ const stage={...common,isStage:true,name:'Stage',variables:{[SCENE]:['Scene',initial.id],...trackingVariables},broadcasts,blocks:stageBuild.blocks,costumes,sounds:[],currentCostume:scenes.indexOf(initial),layerOrder:0,tempo:60,videoTransparency:50,videoState:'off',textToSpeechLanguage:null};
  const names=new Map(),usedNames=new Set();scenes.forEach(scene=>scene.sprites.forEach(sprite=>{let name=sprite.name,number=2;while(usedNames.has(name))name=`${sprite.name} ${number++}`;usedNames.add(name);names.set(`${scene.id}/${sprite.id}`,name);}));
  const targets=[];
  scenes.forEach((scene,sceneIndex)=>scene.sprites.forEach((sprite,spriteIndex)=>{
@@ -65,7 +67,17 @@ export function compileJuniorProject(project){
 	   // student's label happens to be "Unknown". Recognition is explicit.
 	   return condition.kind==='mlAccepted'?accepted:expr('operator_and',{OPERAND1:accepted,OPERAND2:eq(expr(`${extension}_label`),condition.label)});
 	  }
-  function compile(items){return items.flatMap(source=>{const def=BLOCK_TYPES[source.type];if(!Object.hasOwn(BLOCK_TYPES,source.type))throw new Error(`Unsupported Junior block ${source.type}.`);const v=def.value===undefined?0:boundedNumber(source.value,def.min,def.max,def.value);const choice=source.choice??def.choice;const basic={direction:['motion_pointindirection','DIRECTION'],setX:['motion_setx','X'],setY:['motion_sety','Y'],volume:['sound_setvolumeto','VOLUME'],move:['motion_movesteps','STEPS'],turn:['motion_turnright','DEGREES'],turnLeft:['motion_turnleft','DEGREES'],wait:['control_wait','DURATION'],grow:['looks_changesizeby','CHANGE'],penSize:['pen_setPenSizeTo','SIZE']};
+  const incrementTracking=id=>command('data_changevariableby',{VALUE:1},{VARIABLE:[id,id]});
+  function compile(items){return items.flatMap(source=>{
+   const commands=compileSource(source);if(!trackCompletion)return commands;
+   // Stopping a script or changing scenes can kill other unfinished programs.
+   // Do not present their subsequent idle status as a completed activity.
+   if(source.type==='stop'||source.type==='scene')return [incrementTracking(JUNIOR_CANCEL_VARIABLE),...commands];
+   const def=BLOCK_TYPES[source.type],value=def.value===undefined?0:boundedNumber(source.value,def.min,def.max,def.value);
+   const action=completedJuniorAction(source,value);
+   return action?[...commands,incrementTracking(juniorActionVariable(action))]:commands;
+  });}
+  function compileSource(source){const def=BLOCK_TYPES[source.type];if(!Object.hasOwn(BLOCK_TYPES,source.type))throw new Error(`Unsupported Junior block ${source.type}.`);const v=def.value===undefined?0:boundedNumber(source.value,def.min,def.max,def.value);const choice=source.choice??def.choice;const basic={direction:['motion_pointindirection','DIRECTION'],setX:['motion_setx','X'],setY:['motion_sety','Y'],volume:['sound_setvolumeto','VOLUME'],move:['motion_movesteps','STEPS'],turn:['motion_turnright','DEGREES'],turnLeft:['motion_turnleft','DEGREES'],wait:['control_wait','DURATION'],grow:['looks_changesizeby','CHANGE'],penSize:['pen_setPenSizeTo','SIZE']};
    if(basic[source.type]){if(source.type==='penSize')extensions.add('pen');const [op,input]=basic[source.type];return [command(op,{[input]:v})];}
    if(['right','left','up','down'].includes(source.type)){const dx=source.type==='right'?v*20:source.type==='left'?-v*20:0,dy=source.type==='up'?v*20:source.type==='down'?-v*20:0;return [command('motion_glidesecstoxy',{SECS:math('divide',Math.max(.03,v*.3),speed),X:math('add',positionX,dx),Y:math('add',positionY,dy)})];}
    switch(source.type){
@@ -98,7 +110,7 @@ export function compileJuniorProject(project){
     case'pinHigh':case'pinLow':case'pwm':case'servo':case'tone':case'noTone':case'analogSay':case'digitalSay':{extensions.add('duetHardware');const pin=String(choice||'13');if(source.type==='analogSay'||source.type==='digitalSay')return [command('looks_sayforsecs',{MESSAGE:expr(`duetHardware_${source.type==='analogSay'?'readAnalog':'readDigital'}`,{PIN:pin}),SECS:2})];if(source.type==='servo')return [command('duetHardware_servoWrite',{PIN:pin,ANGLE:v})];if(source.type==='tone')return [command('duetHardware_tone',{PIN:pin,FREQUENCY:v,DURATION:1})];if(source.type==='noTone')return [command('duetHardware_noTone',{PIN:pin})];return [command('duetHardware_setPinMode',{PIN:pin,MODE:'OUTPUT'}),command(`duetHardware_${source.type==='pwm'?'analogWrite':'digitalWrite'}`,{PIN:pin,VALUE:source.type==='pwm'?v:source.type==='pinHigh'?1:0})];}
     default:throw new Error(`Cannot run ${source.type}.`);
    }
-  });}
+  }
   const setup=[stop('other scripts in sprite'),command('motion_setrotationstyle',{}, {STYLE:['all around',null]}),command('sound_setvolumeto',{VOLUME:100}),{...command('control_if_else',{CONDITION:active}),children:[command('motion_gotoxy',{X:x,Y:y}),command('motion_pointindirection',{DIRECTION:direction}),command('looks_setsizeto',{SIZE:size}),command('looks_switchcostumeto',{COSTUME:spriteCostumes[initialCostume].name}),command('data_setvariableto',{VALUE:1},{VARIABLE:['Speed',speedId]}),command('looks_show')],elseChildren:[command('looks_hide')]}];
   broadcasts.__duet_setup='__duet_setup';build.hat(`${prefix}-setup`,'event_whenbroadcastreceived',{BROADCAST_OPTION:['__duet_setup','__duet_setup']},setup);
   sprite.scripts.forEach((script,i)=>{
@@ -115,5 +127,5 @@ export function compileJuniorProject(project){
  }));
  // Pen state belongs to each sprite and must reset before each scene starts.
  if(extensions.has('pen')){for(const target of targets){const setup=Object.values(target.blocks).find(b=>b.opcode==='event_whenbroadcastreceived'&&b.fields.BROADCAST_OPTION?.[0]==='__duet_setup');if(setup){const id=`${target.name}-pen-reset`,next=setup.next;target.blocks[id]={opcode:'pen_penUp',next,parent:Object.keys(target.blocks).find(key=>target.blocks[key]===setup),inputs:{},fields:{},shadow:false,topLevel:false};if(next)target.blocks[next].parent=id;setup.next=id;}}}
- return {project:{targets:[stage,...targets],monitors:[],extensions:[...extensions],meta:{semver:'3.0.0',vm:'0.2.0',agent:'DuetBlox Junior'}},assets:[...assets.values()]};
+ return {project:{targets:[stage,...targets],monitors:[],extensions:[...extensions],meta:{semver:'3.0.0',vm:'0.2.0',agent:'DuetBlox Junior'}},assets:[...assets.values()],...(trackCompletion?{juniorCompletion:{version:1,sceneId:initial.id}}:{})};
 }

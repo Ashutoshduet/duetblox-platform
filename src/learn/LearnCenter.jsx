@@ -5,6 +5,8 @@ import {LESSONS, lessonById, translate} from './lessons.js';
 import {createProgressStore, lessonProgress, PROGRESS_KEY} from './progress.js';
 import {starterFile} from './examples.js';
 import './learn.css';
+import MascotCompanion from '../celebrations/MascotCompanion.jsx';
+import {celebrations} from '../celebrations/store.js';
 
 let storage;
 try { storage = globalThis.localStorage; } catch { /* A restricted browser still gets in-memory guidance. */ }
@@ -12,7 +14,16 @@ const store = createProgressStore(storage);
 const icons = {Shapes, Blocks, Image, MessageCircle, Cpu, Gamepad2, HelpCircle, PenTool, Music, TrafficCone, Code2};
 const pageLabels = {junior: 'Junior Blocks', blocks: 'Blocks', ml: 'ML Studio', boards: 'Boards & robots', python: 'Python'};
 const useProgress = () => useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
-const send = action => store.dispatch(action);
+const send = action => {
+  const before = store.snapshot().progress;
+  store.dispatch(action);
+  if (action.type === 'reset' || (action.type === 'check' && action.checked !== true)) celebrations.clear(`lesson:${action.lessonId}`);
+  if (action.type !== 'check' || action.checked !== true) return;
+  const lesson = lessonById(action.lessonId);
+  if (!lesson || lessonProgress(before, lesson.id).finished || !lessonProgress(store.snapshot().progress, lesson.id).finished) return;
+  celebrations.publish({key: `lesson:${lesson.id}:checked`, scope: `lesson:${lesson.id}`, title: 'You checked every step!',
+    message: 'You marked this lesson complete. Show someone what you tried and what you discovered.', dance: lesson.target === 'boards' ? 'shuffle' : 'high-five'});
+};
 const copy = (locale, en, hi, hg) => locale === 'hi' ? hi : locale === 'hg' ? (hg || en) : en;
 
 function useStorageSync() {
@@ -52,6 +63,7 @@ function LessonStep({lesson, progress, locale, onNavigate, compact = false}) {
     <div className="learn-step-controls"><button className="button secondary" disabled={status.index === 0} onClick={() => move(status.index - 1)}><ArrowLeft size={16}/>{copy(locale, 'Back', 'पीछे', 'Peeche')}</button>
       {status.index < status.total - 1 ? <button className="button secondary" onClick={() => move(status.index + 1)}>{copy(locale, 'Next step', 'अगला चरण', 'Agla step')}<ArrowRight size={16}/></button> : <span className="learn-final-step">{status.finished ? copy(locale, 'All steps checked', 'सभी चरण जाँचे गए', 'Saare steps check ho gaye') : copy(locale, 'Last step · check your work', 'आखिरी चरण · अपना काम जाँचें', 'Aakhri step · apna kaam check kariye')}</span>}
     </div>
+    <MascotCompanion scope={`lesson:${lesson.id}`}/>
     {!compact && <button className="button primary learn-open" onClick={open}>{copy(locale, `Open ${pageLabels[lesson.target]}`, `${pageLabels[lesson.target]} खोलें`, `${pageLabels[lesson.target]} kholiye`)}<ArrowRight size={17}/></button>}
     {notice && <p className="learn-notice" role="status">{notice}</p>}
   </section>;
