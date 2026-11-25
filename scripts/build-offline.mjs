@@ -17,7 +17,11 @@ async function walk(dir,rel=''){for(const entry of await readdir(dir,{withFileTy
  const name=rel?`${rel}/${entry.name}`:entry.name;
  if(['source','types'].includes(entry.name)||['sw.js','offline-manifest.json'].includes(name)||name.endsWith('.map')||entry.name==='.DS_Store')continue;
  if(entry.isDirectory())await walk(path.join(dir,entry.name),name);else if(entry.isFile()){
-  const data=await readFile(path.join(dir,entry.name));files.push({url:appPath(name,basePath),bytes:data.length,sha256:hash(data),shell:name==='index.html'||name==='favicon.svg'||name==='manifest.webmanifest'||name.startsWith('assets/')||name.startsWith('fonts/')});
+  // Dedicated workers (including the 20 MiB SPICE solver) are loaded when a
+  // student opens that feature. Keep them in the full pack without making a
+  // first shell install wait for a simulator that Junior does not need.
+  const deferredWorker=/^assets\/worker-[^/]+\.js$/.test(name);
+  const data=await readFile(path.join(dir,entry.name));files.push({url:appPath(name,basePath),bytes:data.length,sha256:hash(data),shell:name==='index.html'||name==='favicon.svg'||name==='manifest.webmanifest'||name.startsWith('assets/')&&!deferredWorker||name.startsWith('fonts/')});
  }
 }}
 await walk(dist);const index=files.find(f=>f.url===appPath('index.html',basePath));if(!index)throw new Error('Build Vite before building the offline pack.');files.push({...index,url:basePath});files.sort((a,b)=>a.url.localeCompare(b.url));

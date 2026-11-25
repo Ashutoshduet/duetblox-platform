@@ -57,6 +57,34 @@ test('a bad checksum never caches the broken asset or marks the pack ready',asyn
   assert.equal((await h.finished('STATUS')).ready,false);
 });
 
+test('first online use of a Scratch entry bypasses stale HTTP bytes and caches only this pack version',async()=>{
+  const h=harness({fetchHook:async(url,options)=>url.endsWith('/scratch/index.html')&&options?.cache!=='no-store'?new Response('old Scratch entry'):null});
+  const result=await h.request('/scratch/index.html?mode=stage');
+  assert.equal(result.status,200);assert.equal(await result.text(),'scratch studio');
+  assert.equal(h.requests.length,1);assert.equal(h.requests[0].options.cache,'no-store');
+  assert.equal(await (await h.cache.match('/scratch/index.html')).text(),'scratch studio');
+  assert.equal(await (await h.request('/scratch/index.html?mode=editor')).text(),'scratch studio');
+  assert.equal(h.requests.length,1,'The verified entry is reused without another network fetch');
+  assert.equal((await h.finished('STATUS')).ready,false,'One cached file does not imply a complete offline pack');
+});
+
+test('an outdated online Scratch bridge is never executed or stored as the current pack',async()=>{
+  const h=harness({responses:{'/':'studio','/scratch/duetblox-editor.js':'current bridge'},fetchHook:async url=>url.endsWith('/scratch/duetblox-editor.js')?new Response('outdated bridge'):null});
+  const result=await h.request('/scratch/duetblox-editor.js');
+  assert.equal(result.status,503);assert.match(await result.text(),/verification/);
+  assert.equal(await h.cache.match('/scratch/duetblox-editor.js'),undefined);
+  assert.equal(h.requests.length,1,'An integrity mismatch is not retried as a transient outage');
+});
+
+test('full cache storage does not block a verified online Scratch entry or imply offline readiness',async()=>{
+  const h=harness();
+  h.cache.put=async()=>{throw new DOMException('Storage full','QuotaExceededError');};
+  const result=await h.request('/scratch/index.html?mode=stage');
+  assert.equal(result.status,200);assert.equal(await result.text(),'scratch studio');
+  assert.equal(await h.cache.match('/scratch/index.html'),undefined);
+  assert.equal((await h.finished('STATUS')).ready,false);
+});
+
 test('cancellation cannot complete or cache a late network response, and preparation can resume',async()=>{
   const gate=deferred();let started=false,wait=true;
   const h=harness({fetchHook:async(url,options)=>{if(url.endsWith('weights.bin')&&wait){started=true;await Promise.race([gate.promise,new Promise((_,reject)=>options?.signal?.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError'))))]);}}});
@@ -219,10 +247,15 @@ test('offline build injects exactly the 23 pinned official shards and refuses ch
  const mirrors=JSON.parse(generated.match(/const MIRRORS = (.+);/)[1]);assert.equal(Object.keys(mirrors).length,23);
  const pack=JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8'));assert.equal(pack.files.length,25);assert.equal(pack.bytes,173);
  for(const file of files){const entry=mirrors[`/models/${file.path}`];assert.equal(entry.url,file.source);assert.equal(entry.bytes,7);assert.equal(entry.sha256,file.sha256);}
+ await mkdir(path.join(root,'dist/assets'),{recursive:true});
+ await writeFile(path.join(root,'dist/assets/worker-solver.js'),'lazy solver');
+ await writeFile(path.join(root,'dist/assets/index-client.js'),'main app');
  await writeFile(path.join(root,'dist/manifest.webmanifest'),JSON.stringify({id:'./',start_url:'./',scope:'./',icons:[{src:'./favicon.svg'}]}));
  result=build('/duetblox/');assert.equal(result.status,0,result.stderr);
  const mountedPack=JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8'));
  assert.equal(mountedPack.basePath,'/duetblox/');assert.ok(mountedPack.files.every(file=>file.url.startsWith('/duetblox/')));
+ assert.equal(mountedPack.files.find(file=>file.url==='/duetblox/assets/worker-solver.js').shell,false,'Optional solver stays in the full pack without delaying shell activation');
+ assert.equal(mountedPack.files.find(file=>file.url==='/duetblox/assets/index-client.js').shell,true,'The app entry remains immediately available after installation');
  const mountedWorker=await readFile(path.join(root,'dist/sw.js'),'utf8');
  const mountedMirrors=JSON.parse(mountedWorker.match(/const MIRRORS = (.+);/)[1]);
  assert.ok(Object.keys(mountedMirrors).every(url=>url.startsWith('/duetblox/models/')));

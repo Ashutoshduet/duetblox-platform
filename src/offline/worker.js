@@ -109,11 +109,17 @@ self.addEventListener('fetch',event=>{
    const cache=await caches.open(CACHE);const cached=await cache.match(normalized);
    if(cached)return cached;
    if(saved.offline)return new Response('This file is missing from the offline pack. Reconnect and prepare it again.',{status:503});
-   if(MIRRORS[known.get(normalized).url]){
-    try{const response=await verifiedResponse(known.get(normalized));await cache.put(normalized,response.clone());return response;}
-    catch(error){return new Response(error.message||'The verified model file is unavailable. Reconnect and try again.',{status:503,headers:{'Content-Type':'text/plain'}});}
+   // A browser HTTP cache can retain a previous release's fixed file names.
+   // Verify every pack asset on its first use, not only mirrored model files,
+   // so a current shell cannot silently run an older Scratch bridge.
+   try{
+    const response=await verifiedResponse(known.get(normalized));
+    // A full cache must not prevent an otherwise valid online file loading.
+    // STATUS/PREPARE still require every file before claiming offline readiness.
+    try{await cache.put(normalized,response.clone());}catch{}
+    return response;
    }
-   return fetch(request);
+   catch(error){return new Response(error.message||'The current app file is unavailable. Reconnect and try again.',{status:503,headers:{'Content-Type':'text/plain'}});}
   }
   if(saved.offline)return new Response('DUETBlox offline mode: this feature requires a network connection.',{status:503,headers:{'Content-Type':'text/plain'}});
   return fetch(request);

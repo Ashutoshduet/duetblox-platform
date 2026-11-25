@@ -10,6 +10,13 @@ import {chromium} from 'playwright-core';
 
 const publicRoot = path.resolve(fileURLToPath(new URL('../../../public/', import.meta.url)));
 const editorOverlay = process.env.DUET_EDITOR_OVERLAY && path.resolve(process.env.DUET_EDITOR_OVERLAY);
+function overlayAsset(pathname, directory = editorOverlay) {
+  if (!directory) return null;
+  if (/^\/scratch\/duetblox-editor(?:-[a-f0-9]{20})?\.js$/.test(pathname)) return path.join(directory, 'duetblox-editor.js');
+  if (/^\/scratch\/editor(?:-[a-f0-9]{20})?\.css$/.test(pathname)) return path.join(directory, 'editor.css');
+  if (/^\/scratch\/duetblox-[\w.-]+\.js$/.test(pathname)) return path.join(directory, path.basename(pathname));
+  return null;
+}
 const evidence = fileURLToPath(new URL('../../../work/release-050/', import.meta.url));
 const mime = {'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.wasm': 'application/wasm'};
 let server, browser, origin;
@@ -34,8 +41,7 @@ before(async () => {
     if (!file.startsWith(publicRoot + path.sep)) {res.writeHead(403); res.end(); return;}
     // An adapter-only build can be verified without replacing public assets
     // while another browser test is using the packaged editor.
-    if (editorOverlay && /^\/scratch\/duetblox-[\w.-]+\.js$/.test(url.pathname)) file = path.join(editorOverlay, path.basename(url.pathname));
-    if (editorOverlay && url.pathname === '/scratch/editor.css') file = path.join(editorOverlay, 'editor.css');
+    file = overlayAsset(url.pathname) || file;
     try {const data = await fs.readFile(file); res.writeHead(200, {'Content-Type': mime[path.extname(file)] || 'application/octet-stream'}); res.end(data);}
     catch {res.writeHead(404); res.end();}
   });
@@ -44,6 +50,22 @@ before(async () => {
   browser = await chromium.launch({executablePath: process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
 });
 after(async () => {await browser?.close(); await new Promise(resolve => server?.close(resolve));});
+test('adapter overlay routes versioned entry assets and preserves lazy chunk filenames', () => {
+  const directory = path.join(publicRoot, 'overlay-fixture');
+  for (const pathname of ['/scratch/duetblox-editor.js', '/scratch/duetblox-editor-0123456789abcdef0123.js']) {
+    assert.equal(overlayAsset(pathname, directory), path.join(directory, 'duetblox-editor.js'));
+    assert.equal(overlayAsset(pathname, null), null, 'Normal builds must keep their own entry asset');
+  }
+  for (const pathname of ['/scratch/editor.css', '/scratch/editor-0123456789abcdef0123.css']) {
+    assert.equal(overlayAsset(pathname, directory), path.join(directory, 'editor.css'));
+    assert.equal(overlayAsset(pathname, null), null);
+  }
+  const chunk = 'duetblox-731.0123456789abcdef0123.js';
+  assert.equal(overlayAsset(`/scratch/${chunk}`, directory), path.join(directory, chunk));
+  for (const pathname of ['/scratch/index-0123456789abcdef0123.html', '/scratch/vendor/scratch-vm.js', '/scratch/editor.css.map', '/other/duetblox-editor.js']) {
+    assert.equal(overlayAsset(pathname, directory), null, 'Only adapter assets are replaced');
+  }
+});
 const command = (page, type, payload = {}) => page.evaluate(({type, payload}) => window.send(type, payload), {type, payload});
 async function open(mode = 'editor') {
   const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
