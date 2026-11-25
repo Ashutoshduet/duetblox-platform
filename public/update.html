@@ -48,9 +48,50 @@
     const button = document.querySelector('#update');
     const status = document.querySelector('#status');
     let busy = false;
+    const waitForActivation = registration => new Promise((resolve, reject) => {
+      const worker = registration.installing || registration.waiting || registration.active;
+      if (!worker) return reject(new Error('The new offline worker could not start. Try again while connected.'));
+      const finish = (error) => {
+        clearTimeout(timer); worker.removeEventListener('statechange', check);
+        error ? reject(error) : resolve(worker);
+      };
+      const check = () => {
+        if (worker.state === 'activated') finish();
+        else if (worker.state === 'redundant') finish(new Error('The new version could not verify its files. Reconnect and try again.'));
+      };
+      const timer = setTimeout(() => finish(new Error('The update is taking too long. Stay connected and try again.')), 90000);
+      worker.addEventListener('statechange', check); check();
+    });
+    const readVersion = worker => new Promise((resolve, reject) => {
+      const channel = new MessageChannel();
+      const timer = setTimeout(() => { channel.port1.close(); reject(new Error('The new version did not respond. Try again.')); }, 15000);
+      channel.port1.onmessage = event => { clearTimeout(timer); channel.port1.close(); resolve(event.data?.version); };
+      worker.postMessage({type: 'STATUS'}, [channel.port2]);
+    });
     const setStatus = (text, error = false) => {
       status.textContent = text;
       status.toggleAttribute('data-error', error);
+    };
+    const recoveryKey = `duetblox-update:${base.pathname}`;
+    const showError = error => {
+      setStatus(`Could not load the update. ${error.name === 'TimeoutError' ? 'The connection timed out. Reconnect and try again.' : error.message || 'Reconnect and try again.'} Your saved projects have not been deleted.`, true);
+      busy = false; saved.disabled = false; button.disabled = !saved.checked;
+    };
+    const finishInstallation = async version => {
+      try {
+        // This is a new document opened after unregistering. Registering inside
+        // the previous controlled document can make the new worker wait forever.
+        if (navigator.serviceWorker.controller) throw new Error('Another DUETBlox window restarted the older app. Close it and try again.');
+        busy = true; saved.checked = true; saved.disabled = true; button.disabled = true;
+        setStatus('Downloading and verifying the latest app. Keep this page open…');
+        const replacement = await navigator.serviceWorker.register(new URL('sw.js', base), {scope: base.href, updateViaCache: 'none'});
+        const active = await waitForActivation(replacement);
+        if (await readVersion(active) !== version) throw new Error('The server returned an older offline version. Try again while connected.');
+        const destination = new URL('index.html', base);
+        destination.searchParams.set('refresh', `${version}-${crypto.randomUUID()}`);
+        destination.hash = '/junior';
+        location.replace(destination.href);
+      } catch (error) { showError(error); }
     };
     saved.addEventListener('change', () => { button.disabled = busy || !saved.checked; });
     button.addEventListener('click', async () => {
@@ -77,20 +118,32 @@
           })) throw new Error('A different offline app controls this address. Nothing was changed.');
         }
         setStatus('Opening the latest version. Your saved projects are being kept…');
+        const nonce = crypto.randomUUID();
+        // A short-lived marker carries this tab's explicit acknowledgement over
+        // the reload. It is separate from every project and dataset storage key.
+        sessionStorage.setItem(recoveryKey, JSON.stringify({nonce, version: manifest.version, at: Date.now()}));
         // Removing only this exact registration releases the stale controller
         // for the next navigation. Old tabs must already be saved and closed.
         for (const registration of appRegistrations) await registration.unregister();
         const remaining = await navigator.serviceWorker.getRegistrations();
         if (remaining.some(item => item.scope === base.href)) throw new Error('Close other DUETBlox windows, then try again.');
-        const destination = new URL('index.html', base);
-        destination.searchParams.set('refresh', `${manifest.version}-${crypto.randomUUID()}`);
-        destination.hash = '/junior';
-        location.replace(destination.href);
+        const installPage = new URL('update.html', base);
+        installPage.searchParams.set('install', nonce);
+        location.replace(installPage.href);
       } catch (error) {
-        setStatus(`Could not load the update. ${error.name === 'TimeoutError' ? 'The connection timed out. Reconnect and try again.' : error.message || 'Reconnect and try again.'} Your saved projects have not been deleted.`, true);
-        busy = false; saved.disabled = false; button.disabled = !saved.checked;
+        try { sessionStorage.removeItem(recoveryKey); } catch {}
+        showError(error);
       }
     });
+    const installNonce = new URL(location.href).searchParams.get('install');
+    if (installNonce) {
+      try {
+        const marker = JSON.parse(sessionStorage.getItem(recoveryKey) || 'null');
+        if (marker?.nonce !== installNonce || !/^[a-f0-9]{20}$/.test(marker?.version || '') || !Number.isFinite(marker?.at) || Date.now() - marker.at < 0 || Date.now() - marker.at > 600000) throw new Error('This update link has expired. Save your work and confirm again.');
+        sessionStorage.removeItem(recoveryKey);
+        finishInstallation(marker.version);
+      } catch (error) { showError(error); }
+    }
   </script>
 </body>
 </html>
