@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Update DUETBlox</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: #f7f5fc; color: #2b2340; font: 16px/1.6 system-ui,sans-serif; }
+    main { max-width: 680px; margin: 8vh auto; padding: clamp(24px,5vw,48px); border: 1px solid #ddd4eb; border-radius: 24px; background: white; }
+    .brand { color: #66338d; font-weight: 800; font-size: 20px; }
+    h1 { font-size: clamp(26px,5vw,36px); line-height: 1.2; margin: 24px 0 16px; }
+    p { margin: 16px 0; }
+    li { margin: 12px 0; }
+    ol { padding-left: 24px; }
+    label { display: flex; align-items: flex-start; gap: 12px; padding: 16px; margin: 24px 0 16px; border: 1px solid #ddd4eb; border-radius: 12px; cursor: pointer; }
+    input { width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto; accent-color: #66338d; }
+    button { padding: 14px 20px; border: 0; border-radius: 12px; background: #66338d; color: white; font: inherit; font-weight: 700; cursor: pointer; min-height: 48px; }
+    button:disabled { opacity: .5; cursor: default; }
+    :focus-visible { outline: 3px solid #d89d21; outline-offset: 4px; }
+    #status { min-height: 52px; padding-top: 4px; }
+    #status[data-error] { color: #a32434; }
+    .note { font-size: 14px; color: #635775; }
+    a { color: #66338d; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">DUETBlox</div>
+    <h1>Load the latest DUETBlox</h1>
+    <p>If Junior still has its older layout, your browser may be opening an older offline copy.</p>
+    <ol>
+      <li>Use <strong>Save project</strong> in each open DUETBlox tab to download your work.</li>
+      <li>Close the other DUETBlox tabs and app windows. Keep this page open and stay connected to the internet.</li>
+      <li>Load the latest version below. Afterwards, prepare its offline pack before disconnecting.</li>
+    </ol>
+    <p>Your saved projects, datasets and downloaded offline files are kept. This does not clear browser data or change the main DUETPower website.</p>
+    <label><input id="saved" type="checkbox"><span>I have saved my work and closed other DUETBlox tabs.</span></label>
+    <button id="update" type="button" disabled>Load latest version</button>
+    <p id="status" role="status" aria-live="polite">Ready when you have saved your work.</p>
+    <p class="note">An update needs a new offline preparation. Your exported <code>.duet</code> files can be reopened from the workspace.</p>
+    <a href="./">Return to DUETBlox</a>
+  </main>
+  <script type="module">
+    const base = new URL('./', location.href);
+    const saved = document.querySelector('#saved');
+    const button = document.querySelector('#update');
+    const status = document.querySelector('#status');
+    let busy = false;
+    const setStatus = (text, error = false) => {
+      status.textContent = text;
+      status.toggleAttribute('data-error', error);
+    };
+    saved.addEventListener('change', () => { button.disabled = busy || !saved.checked; });
+    button.addEventListener('click', async () => {
+      if (busy || !saved.checked) return;
+      busy = true; button.disabled = true; saved.disabled = true;
+      try {
+        if (!isSecureContext || !('serviceWorker' in navigator)) throw new Error('Open this page in a browser with HTTPS support.');
+        setStatus('Checking that the latest version is available…');
+        const probe = new URL('offline-manifest.json', base);
+        probe.searchParams.set('check', crypto.randomUUID());
+        // The manifest is outside the runtime cache. Check the connection before
+        // detaching a worker; never remove project storage or offline caches.
+        const response = await fetch(probe, {cache: 'no-store', signal: AbortSignal.timeout(20000)});
+        if (!response.ok) throw new Error('The update server could not be reached. Reconnect and try again.');
+        const manifest = await response.json();
+        if (manifest.basePath !== base.pathname || !/^[a-f0-9]{20}$/.test(manifest.version || '')) throw new Error('This update does not match the current app address. Nothing was changed.');
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const appRegistrations = registrations.filter(item => item.scope === base.href);
+        for (const registration of appRegistrations) {
+          const workers = [registration.active, registration.waiting, registration.installing].filter(Boolean);
+          if (workers.some(worker => {
+            const script = new URL(worker.scriptURL);
+            return script.origin !== base.origin || script.pathname !== `${base.pathname}sw.js`;
+          })) throw new Error('A different offline app controls this address. Nothing was changed.');
+        }
+        setStatus('Opening the latest version. Your saved projects are being kept…');
+        // Removing only this exact registration releases the stale controller
+        // for the next navigation. Old tabs must already be saved and closed.
+        for (const registration of appRegistrations) await registration.unregister();
+        const remaining = await navigator.serviceWorker.getRegistrations();
+        if (remaining.some(item => item.scope === base.href)) throw new Error('Close other DUETBlox windows, then try again.');
+        const destination = new URL('index.html', base);
+        destination.searchParams.set('refresh', `${manifest.version}-${crypto.randomUUID()}`);
+        destination.hash = '/junior';
+        location.replace(destination.href);
+      } catch (error) {
+        setStatus(`Could not load the update. ${error.name === 'TimeoutError' ? 'The connection timed out. Reconnect and try again.' : error.message || 'Reconnect and try again.'} Your saved projects have not been deleted.`, true);
+        busy = false; saved.disabled = false; button.disabled = !saved.checked;
+      }
+    });
+  </script>
+</body>
+</html>
