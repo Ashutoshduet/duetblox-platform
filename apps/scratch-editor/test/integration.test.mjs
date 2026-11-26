@@ -9,6 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright-core';
 import JSZip from 'jszip';
 import {makeJuniorProject, makeJuniorBlock, makeJuniorScene, compileJuniorProject} from '../../../src/junior/model.js';
+import {ZUNI_COSTUMES} from '../../../src/characters/zuni.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicRoot = path.resolve(root, '../../public');
@@ -39,6 +40,62 @@ before(async () => {
 after(async()=>{await browser?.close();await new Promise(resolve=>server?.close(resolve));});
 const command=(page,type,payload={})=>page.evaluate(({type,payload})=>window.send(type,payload),{type,payload});
 async function open(mode){const page=await browser.newPage({viewport:{width:1440,height:960}});const errors=[];page.on('pageerror',error=>errors.push(error.message));await page.goto(`${origin}/harness?mode=${mode}`);await page.waitForFunction(()=>window.messages.some(m=>m.type==='ready'),null,{timeout:30000});return {page,errors,frame:page.frames().find(f=>f.url().includes('/scratch/index.html'))};}
+
+test('official sprite library adds offline Zuni duplicates, runs Looks costumes, and preserves all assets in sb3', {timeout: 60000}, async () => {
+  const {page, frame, errors} = await open('editor');
+  try {
+    const initial = (await command(page, 'getProject')).project;
+    initial.targets[1].variables.keep = ['Keep my work', 42];
+    initial.targets[1].x = 73;
+    await command(page, 'loadProject', {project: initial});
+    await page.context().setOffline(true);
+    for (const name of ['Zuni', 'Zuni2']) {
+      await frame.getByRole('button', {name: 'Choose a Sprite', exact: true}).first().click();
+      await frame.getByPlaceholder('Search', {exact: true}).fill('Zuni');
+      const card = frame.getByRole('button', {name: 'Zuni', exact: true});
+      await card.waitFor();
+      await card.locator('img').evaluate(img => img.decode());
+      assert.equal(await card.locator('img').evaluate(img => img.complete && img.naturalWidth > 0), true);
+      await card.click();
+      await page.waitForFunction(async name => (await window.send('getProject')).project.targets.some(t => t.name === name), name);
+    }
+    const project = (await command(page, 'getProject')).project;
+    assert.equal(project.targets.length, initial.targets.length + 2);
+    assert.equal(project.targets[1].variables.keep[1], 42); assert.equal(project.targets[1].x, 73);
+    for (const name of ['Zuni', 'Zuni2']) assert.deepEqual(project.targets.find(t => t.name === name).costumes.map(c => c.name), ZUNI_COSTUMES.map(c => c.name));
+    const zuni = project.targets.find(t => t.name === 'Zuni');
+    zuni.blocks = {
+      flag: {opcode: 'event_whenflagclicked', next: 'switch', parent: null, inputs: {}, fields: {}, topLevel: true, shadow: false, x: 50, y: 50},
+      switch: {opcode: 'looks_switchcostumeto', next: 'next', parent: 'flag', inputs: {COSTUME: [1, 'costumeMenu']}, fields: {}, topLevel: false, shadow: false},
+      costumeMenu: {opcode: 'looks_costume', next: null, parent: 'switch', inputs: {}, fields: {COSTUME: ['Walk B', null]}, topLevel: false, shadow: true},
+      next: {opcode: 'looks_nextcostume', next: 'move', parent: 'switch', inputs: {}, fields: {}, topLevel: false, shadow: false},
+      move: {opcode: 'motion_changexby', next: null, parent: 'next', inputs: {DX: [1, [4, '20']]}, fields: {}, topLevel: false, shadow: false}
+    };
+    const previousX = zuni.x;
+    await command(page, 'loadProject', {project}); await command(page, 'greenFlag');
+    await page.waitForFunction(async expectedX => {
+      const target = (await window.send('getProject')).project.targets.find(t => t.name === 'Zuni');
+      return target.currentCostume === 3 && target.x === expectedX;
+    }, previousX + 20);
+    const result = (await command(page, 'getProject')).project;
+    assert.equal(result.targets.find(t => t.name === 'Zuni').x, previousX + 20);
+    assert.equal(result.targets.find(t => t.name === 'Zuni2').currentCostume, 0, 'Duplicate costume state must be independent');
+    const saved = await command(page, 'saveProject');
+    const zip = await JSZip.loadAsync(Buffer.from(saved.base64, 'base64'));
+    for (let index = 0; index < zuni.costumes.length; index++) {
+      assert.equal(await zip.file(zuni.costumes[index].md5ext).async('string'), ZUNI_COSTUMES[index].svg);
+    }
+    await command(page, 'resetProject');
+    await command(page, 'loadProject', {project: saved.base64, encoding: 'base64'});
+    const reopened = (await command(page, 'getProject')).project;
+    assert.equal(reopened.targets.find(t => t.name === 'Zuni').currentCostume, 3);
+    assert.equal(reopened.targets.find(t => t.name === 'Zuni').x, previousX + 20);
+    assert.equal(reopened.targets.find(t => t.name === 'Zuni2').costumes.length, 6);
+    assert.equal(reopened.targets[1].variables.keep[1], 42);
+    await page.screenshot({path: path.join(root, 'work/test-results/zuni-sprite-roundtrip.png')});
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
 function juniorFixture(){const p=makeJuniorProject();const sprite=p.scenes[0].sprites[0];sprite.x=0;sprite.y=0;sprite.direction=90;sprite.scripts[0].blocks=[{...makeJuniorBlock('repeat'),value:3,children:[{...makeJuniorBlock('move'),value:20}]},makeJuniorBlock('sound')];return compileJuniorProject(p);}
 
 for (const mode of ['stage','editor']) test(`${mode}: official VM executes Junior repeat/sound and preserves an sb3 roundtrip`,{timeout:60000},async()=>{

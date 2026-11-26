@@ -4,7 +4,7 @@ import {supportsJuniorCompletion} from '../scratch-protocol.js';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Clock3, Download, Flag, Image, MessageCircle,
   Play, Plus, Repeat2, RotateCcw, RotateCw, Square, Trash2, Upload, Volume2, X, ArrowUp, ArrowDown, Home, Eye, EyeOff, Maximize, Minimize, Gauge, Send, Hand, Infinity, Paintbrush, Pen, Mic, BrainCircuit, Cpu, Layers, Undo2, Redo2, Copy, GitBranch, Search, Keyboard, CornerUpLeft, Grid3X3, Expand, SlidersHorizontal, FolderOpen, Save, HelpCircle, ChevronDown} from 'lucide-react';
-import {artDataURL, BACKDROP_ART, SPRITE_ART} from './assets.js';
+import {artDataURL, BACKDROP_ART, SPRITE_ART, getBuiltinCostumes, juniorCostumeChoices} from './assets.js';
 import {BLOCK_TYPES, compileJuniorProject, makeJuniorBlock, makeJuniorProject, makeJuniorScene,
   makeJuniorSprite, makeJuniorScript, MESSAGE_COLORS, TRIGGERS, parseJuniorProject, removeJuniorBlock, serializeJuniorProject, updateBlockList,
   CONDITION_TYPES,JUNIOR_MODEL_TYPES,JUNIOR_KEYS,makeJuniorCondition,resolveJuniorBranch,JUNIOR_BLOCK_HELP,findJuniorBlocks,countJuniorBlocks,copyJuniorBlock,copyJuniorScript,juniorSequenceWarning} from './model.js';
@@ -27,7 +27,7 @@ const BLOCK_ICONS = {bounce:CornerUpLeft,direction:ArrowUp,setX:ArrowRight,setY:
 const CATEGORIES = [{id:'motion',name:'Motion',icon:ArrowRight},{id:'looks',name:'Looks',icon:MessageCircle},{id:'events',name:'Events',icon:Flag},{id:'control',name:'Control',icon:Repeat2},{id:'sound',name:'Sound',icon:Volume2},{id:'pen',name:'Pen',icon:Pen},{id:'ai',name:'AI',icon:BrainCircuit},{id:'devices',name:'Devices',icon:Cpu}];
 const MOTION_ORDER = ['right','left','up','down','turn','turnLeft','hop','home','move','direction','bounce','random','setX','setY','rotationStyle'];
 function choicesFor(block,project,sprite){
- const pairs = block.type==='rotationStyle'?[['left-right','Flip left / right'],['all around','Turn all around'],["don't rotate",'Stay upright']]:['message','messageWait'].includes(block.type)?MESSAGE_COLORS.map(c=>[c,c]):block.type==='speed'?[['slow','Slow'],['normal','Normal'],['fast','Fast']]:block.type==='stop'?[['all','All scripts'],['this script','This script'],['other scripts in sprite','Other scripts here']]:block.type==='scene'?project.scenes.map(s=>[s.id,s.name]):['sound','startSound'].includes(block.type)?[['chime','Chime'],...(project.assets||[]).filter(a=>a.dataFormat==='wav').map(a=>[a.id,a.name])]:block.type==='costume'?[['first','Original'],...(sprite.costumeAssetIds||[]).map(id=>[id,project.assets?.find(a=>a.id===id)?.name||'Costume'])]:['predict','sayPrediction'].includes(block.type)?[['image','Image'],['sound','Sound'],['pose','Pose']]:null;
+ const pairs = block.type==='rotationStyle'?[['left-right','Flip left / right'],['all around','Turn all around'],["don't rotate",'Stay upright']]:['message','messageWait'].includes(block.type)?MESSAGE_COLORS.map(c=>[c,c]):block.type==='speed'?[['slow','Slow'],['normal','Normal'],['fast','Fast']]:block.type==='stop'?[['all','All scripts'],['this script','This script'],['other scripts in sprite','Other scripts here']]:block.type==='scene'?project.scenes.map(s=>[s.id,s.name]):['sound','startSound'].includes(block.type)?[['chime','Chime'],...(project.assets||[]).filter(a=>a.dataFormat==='wav').map(a=>[a.id,a.name])]:block.type==='costume'?juniorCostumeChoices(sprite,project.assets).map(({choice,name})=>[choice,name]):['predict','sayPrediction'].includes(block.type)?[['image','Image'],['sound','Sound'],['pose','Pose']]:null;
  return pairs;
 }
 
@@ -244,7 +244,10 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
     change({...current, selectedSpriteId: newSprite.id,selectedScriptId:newSprite.scripts[0].id, scenes: current.scenes.map(item => item.id === scene.id ? {...item, sprites: [...item.sprites, newSprite]} : item)});
   }
   const assetURL=id=>{const asset=current.assets?.find(a=>a.id===id);return asset?mediaURL(asset):null;};
-  const spriteURL=item=>assetURL(item.costumeAssetIds?.[(item.initialCostume||0)-1])||artDataURL(SPRITE_ART[item.kind]);
+  const spriteURL=item=>{
+    const builtins=getBuiltinCostumes(item.kind),index=item.initialCostume||0;
+    return index<builtins.length?artDataURL(builtins[index]?.svg||builtins[0].svg):assetURL(item.costumeAssetIds?.[index-builtins.length])||artDataURL(builtins[0].svg);
+  };
   const sceneURL=item=>assetURL(item.backdropAssetId)||artDataURL(BACKDROP_ART[item.background]);
   function addMedia(asset,target='sound'){
     const latest=currentRef.current;const assets=[...(latest.assets||[]).filter(a=>a.id!==asset.id),asset];
@@ -255,7 +258,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
     if(assets.length>100){announce('Use at most 100 custom media assets.',true);return;}
     if(target==='sound'){change({...latest,assets});announce(`Added ${asset.name}. Choose it in a Play sound block.`);return;}
     let selectedSpriteId=latest.selectedSpriteId,selectedScriptId=latest.selectedScriptId;
-    const scenes=latest.scenes.map(item=>{if(item.id!==scene.id)return item;if(target==='backdrop')return {...item,backdropAssetId:asset.id};if(target==='character'){const created=makeJuniorSprite();created.name=asset.name;created.costumeAssetIds=[asset.id];created.initialCostume=1;selectedSpriteId=created.id;selectedScriptId=created.scripts[0].id;return {...item,sprites:[...item.sprites,created]};}return {...item,sprites:item.sprites.map(p=>{if(p.id!==sprite.id)return p;const ids=[...(p.costumeAssetIds||[]).filter(id=>id!==asset.id),asset.id];return {...p,costumeAssetIds:ids,initialCostume:ids.length};})};});
+    const scenes=latest.scenes.map(item=>{if(item.id!==scene.id)return item;if(target==='backdrop')return {...item,backdropAssetId:asset.id};if(target==='character'){const created=makeJuniorSprite();created.name=asset.name;created.costumeAssetIds=[asset.id];created.initialCostume=1;selectedSpriteId=created.id;selectedScriptId=created.scripts[0].id;return {...item,sprites:[...item.sprites,created]};}return {...item,sprites:item.sprites.map(p=>{if(p.id!==sprite.id)return p;const ids=[...(p.costumeAssetIds||[]).filter(id=>id!==asset.id),asset.id];return {...p,costumeAssetIds:ids,initialCostume:getBuiltinCostumes(p.kind).length+ids.length-1};})};});
     change({...latest,assets,scenes,selectedSpriteId,selectedScriptId});setPainting(null);setAddingSprite(false);announce(`Added ${asset.name}.`);
   }
   function chooseImage(target){imageTarget.current=target;imageInput.current?.click();}
@@ -537,7 +540,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
             <button className="junior-add-character" aria-label="Add character" disabled={scene.sprites.length >= 12} onClick={() => setAddingSprite(!addingSprite)} aria-expanded={addingSprite}><Plus size={20}/><span>Add</span></button>
           </aside>
             {addingSprite && <div className="junior-character-picker" aria-label="Choose a character">
-              <span>Pick a new friend</span>{Object.entries(SPRITE_ART).map(([kind, svg]) => <button key={kind} onClick={() => addSprite(kind)}><img src={artDataURL(svg)} alt=""/>{kind}</button>)}
+              <span>Pick a new friend</span>{Object.entries(SPRITE_ART).map(([kind, svg]) => <button key={kind} onClick={() => addSprite(kind)}><img src={artDataURL(svg)} alt=""/>{kind==='zuni'?'Zuni':kind}</button>)}
               <button disabled={mediaBusy} onClick={()=>chooseImage('character')}><Upload size={22}/>Upload character</button>
               <button className="junior-icon-button" aria-label="Close character picker" onClick={() => setAddingSprite(false)}><X size={17}/></button>
             </div>}
@@ -560,7 +563,7 @@ export default function JuniorEditor({project, onProjectChange, onStatus, onExit
           <div className="junior-property-grid">{[{key: 'x', label: 'Start X', min: -240, max: 240}, {key: 'y', label: 'Start Y', min: -180, max: 180}, {key: 'size', label: 'Size %', min: 20, max: 200}, {key: 'direction', label: 'Direction °', min: -180, max: 180}].map(property => <label key={property.key}>{property.label}<input type="number" min={property.min} max={property.max} value={sprite[property.key]}
             onChange={event => changeSprite({[property.key]: event.target.value === '' ? '' : Number(event.target.value)})}
             onBlur={event => {const value = Math.min(property.max, Math.max(property.min, Number(event.target.value) || 0)); if (value !== sprite[property.key]) changeSprite({[property.key]: value});}}/></label>)}</div>
-          <div className="junior-media-tools"><label>Starting costume <select aria-label="Starting costume" value={sprite.initialCostume||0} onChange={e=>changeSprite({initialCostume:Number(e.target.value)})}><option value="0">Original</option>{(sprite.costumeAssetIds||[]).map((id,i)=><option key={id} value={i+1}>{current.assets?.find(a=>a.id===id)?.name||'Costume'}</option>)}</select></label><button disabled={mediaBusy||(sprite.costumeAssetIds?.length||0)>=20} onClick={()=>chooseImage('costume')}><Upload size={14}/>Upload costume</button><button disabled={(sprite.costumeAssetIds?.length||0)>=20} onClick={()=>setPainting('costume')}><Paintbrush size={14}/>Paint costume</button></div>
+          <div className="junior-media-tools"><label>Starting costume <select aria-label="Starting costume" value={sprite.initialCostume||0} onChange={e=>changeSprite({initialCostume:Number(e.target.value)})}>{juniorCostumeChoices(sprite,current.assets).map(({choice,name},index)=><option key={choice} value={index}>{name}</option>)}</select></label><button disabled={mediaBusy||(sprite.costumeAssetIds?.length||0)>=20} onClick={()=>chooseImage('costume')}><Upload size={14}/>Upload costume</button><button disabled={(sprite.costumeAssetIds?.length||0)>=20} onClick={()=>setPainting('costume')}><Paintbrush size={14}/>Paint costume</button></div>
         </div>
         <div className="junior-backdrop-settings"><div className="junior-backdrop-heading"><Image size={16}/><label htmlFor="junior-scene-name">Scene</label><input id="junior-scene-name" aria-label="Scene name" value={scene.name} maxLength={40} onChange={event => changeScene({name: event.target.value})}/>
           <button className="junior-icon-button" title="Remove scene" aria-label="Remove selected scene" disabled={current.scenes.length < 2} onClick={() => {
