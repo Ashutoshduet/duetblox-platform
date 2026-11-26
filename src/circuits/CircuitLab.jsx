@@ -41,7 +41,12 @@ export default function CircuitLab({service, disabled: externallyDisabled = fals
   useEffect(() => {let current = true; readRecord(circuitRecoveryKey(state.boardId)).then(record => {if(current)setRecovery(readCircuitRecovery(record, state.boardId));}).catch(() => {}); return () => {current = false;};}, [state.boardId, state.circuitRevision]);
   useEffect(() => { setSelected(null); setPending(null); setError(''); setDrag(null); setTestPin(board.outputPins.includes(13) ? 13 : board.outputPins[0]); setHistoryVersion(v => v + 1); }, [state.boardId]);
   const attempt = async fn => { setError(''); try { return await fn(); } catch (e) { if(!mounted.current)return;setError(e.message); onStatus?.(e.message); } };
-  const showWorkbench = () => {canvasWrapper.current?.scrollIntoView({block:'start'});canvasWrapper.current?.focus({preventScroll:true});};
+  const showWorkbench = () => {
+    // Keep wiring tools and the return-to-guide action visible above the canvas.
+    const controls = canvasWrapper.current?.closest('.duet-circuit-lab')?.querySelector('.circuit-toolbar');
+    (controls || canvasWrapper.current)?.scrollIntoView({block:'start'});
+    canvasWrapper.current?.focus({preventScroll:true});
+  };
   const showGuide = () => {guideWrapper.current?.scrollIntoView({block:'start'});guideWrapper.current?.querySelector('summary')?.focus({preventScroll:true});};
   const commit = value => {
     if (disabled) return;

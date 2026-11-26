@@ -81,10 +81,12 @@ test('students can start with loose parts and complete the wiring themselves', a
   await page.getByRole('button',{name:'Build the wiring myself',exact:true}).click();
   await expect(page.getByRole('button',{name:'Select LED led1',exact:true})).toBeVisible();
   await expect(page.getByRole('region',{name:'Circuit workbench',exact:true})).toBeFocused();
+  await expect(page.getByRole('button',{name:'Back to lesson guide',exact:true})).toBeInViewport();
   await page.getByRole('button',{name:'Back to lesson guide',exact:true}).click();
   await expect(lesson(page).locator('summary').first()).toBeFocused();
   await page.getByRole('button',{name:'Jump to workbench',exact:true}).click();
   await expect(page.getByRole('region',{name:'Circuit workbench',exact:true})).toBeFocused();
+  await expect(page.getByRole('button',{name:'Back to lesson guide',exact:true})).toBeInViewport();
   await expect(lesson(page).locator('section').first().locator('li.complete')).toHaveCount(0);
   for(const [from,to] of [['board:D13','r1:a'],['r1:b','led1:anode'],['led1:cathode','board:GND']]) {
     await page.getByRole('button',{name:`Connect ${from}`,exact:true}).press('Enter');
