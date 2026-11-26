@@ -78,6 +78,16 @@ self.addEventListener('message',event=>{
  const port=event.ports?.[0];if(!port)return;
  const run=async()=>{
   try{
+   if(event.data?.type==='ACTIVATE_UPDATE'){
+    // Only the dedicated recovery document may deliberately replace a worker
+    // after its saved-work acknowledgement. Ordinary app tabs never activate
+    // a waiting release, and a stale page cannot select another pack version.
+    const client=event.source?.id?await self.clients.get(event.source.id):null;
+    const url=client?.url?new URL(client.url):null;
+    if(event.origin!==self.location.origin||client?.type!=='window'||client.frameType!=='top-level'||url?.origin!==self.location.origin||url.pathname!==`${BASE}update.html`||event.data.confirmed!==true||event.data.version!==PACK.version)throw new Error('Confirm this exact update from the DUETBlox update page after saving your work.');
+    await self.skipWaiting();
+    port.postMessage({type:'activating',version:PACK.version});return;
+   }
    if(event.data?.type==='PREPARE')return await prepare(port);
    if(event.data?.type==='CANCEL'){if(job)job.cancelled=true;port.postMessage({type:'cancelled'});return;}
    if(event.data?.type==='STATUS'){const saved=await state();let ready=saved.ready;

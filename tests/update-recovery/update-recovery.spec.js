@@ -1,8 +1,10 @@
 import {test, expect} from '@playwright/test';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 
 const repairFile = new URL('../../public/update.html', import.meta.url);
+const productionWorker=await readFile(new URL('../../src/offline/worker.js',import.meta.url),'utf8');
 let server, origin, latestRequested, latestReleased, failPreflight, wrongWorkerVersion, requests;
 const latestPack='64fa7621d0f8ac576d6b';
 
@@ -11,13 +13,10 @@ function documentFor(version) {
 }
 
 function workerFor(version) {
-  return `const cacheName=${JSON.stringify('fixture-shell-' + version.toLowerCase())};
-  const html=${JSON.stringify(documentFor(version))};
-  const version=${JSON.stringify(version==='Latest'&&!wrongWorkerVersion?latestPack:'11111111111111111111')};
-  self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(cacheName);for(const path of ['/duetblox/','/duetblox/index.html'])await cache.put(path,new Response(html,{headers:{'Content-Type':'text/html'}}));})()));
-  self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
-  self.addEventListener('message',event=>{if(event.data?.type==='STATUS')event.ports[0]?.postMessage({type:'status',version});});
-  self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(u.origin!==location.origin)return;if(['/duetblox/','/duetblox/index.html'].includes(u.pathname))event.respondWith(caches.open(cacheName).then(cache=>cache.match(u.pathname)));});`;
+  const html=documentFor(version),packVersion=version==='Latest'&&!wrongWorkerVersion?latestPack:'11111111111111111111';
+  const files=['/duetblox/','/duetblox/index.html'].map(url=>({url,bytes:Buffer.byteLength(html),sha256:createHash('sha256').update(html).digest('hex'),shell:true}));
+  const pack={basePath:'/duetblox/',version:packVersion,files,bytes:files.reduce((n,file)=>n+file.bytes,0)};
+  return productionWorker.replace('__DUET_OFFLINE_MANIFEST__',JSON.stringify(pack)).replace('__DUET_OFFLINE_MIRRORS__','{}');
 }
 
 test.beforeAll(async()=>{
@@ -44,7 +43,7 @@ test.beforeAll(async()=>{
         if(url.searchParams.has('refresh'))latestRequested=true;
         res.setHeader('Content-Type','text/html; charset=utf-8');
         res.setHeader('Cache-Control','max-age=315360000');
-        res.end(documentFor(latestRequested?'Latest':'Old'));
+        res.end(documentFor(latestReleased?'Latest':'Old'));
       } else {
         res.statusCode=404;res.end('Fixture route not found');
       }
@@ -143,6 +142,32 @@ test('failed network preflight keeps the old registration and student data intac
   expect(await page.evaluate(async()=>(await navigator.serviceWorker.getRegistrations()).some(r=>r.scope===location.origin+'/duetblox/'&&r.active?.scriptURL===location.origin+'/duetblox/sw.js'))).toBe(true);
   expect(await page.evaluate(()=>localStorage.getItem('fixture-student-work'))).toBe('Keep my Junior story');
   expect(requests.some(url=>/^\/duetblox\/index\.html\?refresh=/.test(url))).toBe(false);
+});
+
+test('a waiting release requires the confirmed update page and claims a retained older client',async({page,context})=>{
+  await seedOldApp(page);
+  // Embedded browsers can retain an older client after its visible tab closes.
+  // Model that lifecycle with a passive second page, in this isolated context.
+  const retained=await context.newPage();await retained.goto(origin+'/duetblox/');
+  await expect(retained.getByRole('heading',{name:'Old Junior',exact:true})).toBeVisible();
+  await page.evaluate(async()=>{const r=await navigator.serviceWorker.register('/duetblox/sw.js',{scope:'/duetblox/',updateViaCache:'none'});await r.update();});
+  await expect.poll(()=>page.evaluate(async()=>(await navigator.serviceWorker.getRegistration('/duetblox/'))?.waiting?.state)).toBe('installed');
+  const command=async(targetPage,type,version)=>targetPage.evaluate(async({type,version})=>{
+    const registration=await navigator.serviceWorker.getRegistration('/duetblox/'),worker=type==='STATUS'?navigator.serviceWorker.controller:registration.waiting;
+    return new Promise((resolve,reject)=>{const c=new MessageChannel(),timer=setTimeout(()=>reject(new Error('Fixture worker command timed out')),5000);c.port1.onmessage=e=>{clearTimeout(timer);c.port1.close();resolve(e.data);};worker.postMessage({type,version,confirmed:true},[c.port2]);});
+  },{type,version});
+  expect((await command(page,'STATUS')).version).toBe('11111111111111111111');
+  expect((await command(retained,'ACTIVATE_UPDATE',latestPack)).type).toBe('error');
+  expect((await command(page,'ACTIVATE_UPDATE','22222222222222222222')).type).toBe('error');
+  expect((await command(page,'STATUS')).version).toBe('11111111111111111111');
+  await page.evaluate(()=>{ServiceWorkerRegistration.prototype.unregister=()=>{throw new Error('Update must preserve the existing registration');};});
+  await page.getByRole('checkbox',{name:'I have saved my work and closed other DUETBlox tabs.',exact:true}).check();
+  await page.getByRole('button',{name:'Load latest version',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Latest Junior',exact:true})).toBeVisible();
+  await expect.poll(async()=>(await command(page,'STATUS')).version).toBe(latestPack);
+  await expect.poll(async()=>(await command(retained,'STATUS')).version).toBe(latestPack);
+  expect(await retained.evaluate(()=>localStorage.getItem('fixture-student-work'))).toBe('Keep my Junior story');
+  await retained.close();
 });
 
 test('backup and closed-tab acknowledgement gates the update action',async({page})=>{

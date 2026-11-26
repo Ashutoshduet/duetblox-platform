@@ -12,10 +12,10 @@ const origin='https://duetblox.test';
 const hash=data=>createHash('sha256').update(data).digest('hex');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 async function tickUntil(check){for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setImmediate(resolve));}throw new Error('Worker test condition did not settle');}
-function harness({basePath='/',responses={'/':'studio','/scratch/index.html':'scratch studio','/models/weights.bin':'weights'},mirrors={},fetchHook,openHook,scheduleTimeout=setTimeout}={}){
+function harness({basePath='/',responses={'/':'studio','/scratch/index.html':'scratch studio','/models/weights.bin':'weights'},mirrors={},fetchHook,openHook,scheduleTimeout=setTimeout,clients={}}={}){
   const files=Object.entries(responses).map(([url,body])=>({url,bytes:Buffer.byteLength(body),sha256:hash(body),shell:url==='/'}));
   const pack={version:'test-pack',basePath,files,bytes:files.reduce((n,f)=>n+f.bytes,0)};
-  const stored=new Map(),listeners=new Map(),requests=[];
+  const stored=new Map(),listeners=new Map(),requests=[],activations=[];
   const key=value=>new URL(typeof value==='string'?value:value.url,origin).href;
   const cache={
     async match(request){return stored.get(key(request))?.clone();},
@@ -26,15 +26,31 @@ function harness({basePath='/',responses={'/':'studio','/scratch/index.html':'sc
   const context={URL,Response,Request,Headers,crypto:webcrypto,setTimeout:scheduleTimeout,clearTimeout,AbortController,AbortSignal,Date,
     caches:{async open(){await openHook?.();return cache;}},
     fetch:async(input,options)=>{const url=key(input);requests.push({url,options});const hooked=await fetchHook?.(url,options);if(hooked)return hooked;const body=responses[new URL(url).pathname];return new Response(body??'not found',{status:body===undefined?404:200});},
-    self:{location:{origin},clients:{claim:async()=>{}},addEventListener:(name,fn)=>listeners.set(name,fn)}
+    self:{location:{origin},clients:{claim:async()=>{},get:async id=>clients[id]},skipWaiting:async()=>{activations.push(true);},addEventListener:(name,fn)=>listeners.set(name,fn)}
   };
   vm.runInNewContext(workerSource.replace('__DUET_OFFLINE_MANIFEST__',JSON.stringify(pack)).replace('__DUET_OFFLINE_MIRRORS__',JSON.stringify(mirrors)),context);
-  const command=(type,data={})=>{const messages=[],pending=[];listeners.get('message')({data:{type,...data},ports:[{postMessage:message=>messages.push(message)}],waitUntil:promise=>pending.push(promise)});return {messages,done:Promise.all(pending)};};
-  const finished=async(type,data={})=>{const run=command(type,data);await run.done;return run.messages.at(-1);};
+  const command=(type,data={},sender={})=>{const messages=[],pending=[];listeners.get('message')({...sender,data:{type,...data},ports:[{postMessage:message=>messages.push(message)}],waitUntil:promise=>pending.push(promise)});return {messages,done:Promise.all(pending)};};
+  const finished=async(type,data={},sender)=>{const run=command(type,data,sender);await run.done;return run.messages.at(-1);};
   const request=async(url,method='GET')=>{let answer;listeners.get('fetch')({request:new Request(new URL(url,origin),{method}),respondWith:promise=>{answer=promise;}});return answer?await answer:null;};
   const install=()=>{let result;listeners.get('install')({waitUntil:promise=>{result=promise;}});return result;};
-  return {pack,cache,requests,command,finished,request,install,stored};
+  return {pack,cache,requests,command,finished,request,install,stored,activations};
 }
+
+test('only a confirmed same-origin top-level update page may activate the matching pack',async()=>{
+ const clients={valid:{id:'valid',type:'window',frameType:'top-level',url:origin+'/duetblox/update.html?retry=1'},app:{id:'app',type:'window',frameType:'top-level',url:origin+'/duetblox/'},foreign:{id:'foreign',type:'window',frameType:'top-level',url:'https://other.test/duetblox/update.html'},wrongPath:{id:'wrongPath',type:'window',frameType:'top-level',url:origin+'/update.html'},frame:{id:'frame',type:'window',frameType:'nested',url:origin+'/duetblox/update.html'},worker:{id:'worker',type:'worker',url:origin+'/duetblox/update.html'}};
+ const h=harness({basePath:'/duetblox/',responses:{'/duetblox/index.html':'studio'},clients});
+ await h.install();assert.equal(h.activations.length,0,'Ordinary installation must not skip waiting');
+ const data={version:h.pack.version,confirmed:true},sender=id=>({origin,source:{id}});
+ for(const id of ['app','foreign','wrongPath','frame','worker','missing'])assert.equal((await h.finished('ACTIVATE_UPDATE',data,sender(id))).type,'error',id);
+ for(const invalid of [{version:'older-pack',confirmed:true},{version:h.pack.version},{version:h.pack.version,confirmed:'true'}])assert.equal((await h.finished('ACTIVATE_UPDATE',invalid,sender('valid'))).type,'error');
+ assert.equal((await h.finished('ACTIVATE_UPDATE',data,{origin:'https://other.test',source:{id:'valid'}})).type,'error');
+ assert.equal((await h.finished('ACTIVATE_UPDATE',data)).type,'error');
+ assert.equal(h.activations.length,0);
+ await h.cache.put('/duetblox/student-cache',new Response('keep cached data'));
+ const result=await h.finished('ACTIVATE_UPDATE',data,sender('valid'));
+ assert.equal(result.type,'activating');assert.equal(result.version,h.pack.version);assert.equal(h.activations.length,1);
+ assert.equal(await (await h.cache.match('/duetblox/student-cache')).text(),'keep cached data');
+});
 
 test('offline pack remains unready until every file has been verified and stored',async()=>{
   const gate=deferred();let started=false;
