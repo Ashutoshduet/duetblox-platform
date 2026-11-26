@@ -12,29 +12,48 @@ const origin='https://duetblox.test';
 const hash=data=>createHash('sha256').update(data).digest('hex');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 async function tickUntil(check){for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setImmediate(resolve));}throw new Error('Worker test condition did not settle');}
-function harness({basePath='/',responses={'/':'studio','/scratch/index.html':'scratch studio','/models/weights.bin':'weights'},mirrors={},fetchHook,openHook,scheduleTimeout=setTimeout}={}){
+function harness({basePath='/',responses={'/':'studio','/scratch/index.html':'scratch studio','/models/weights.bin':'weights'},mirrors={},fetchHook,openHook,scheduleTimeout=setTimeout,abortSignal=AbortSignal,clients={}}={}){
   const files=Object.entries(responses).map(([url,body])=>({url,bytes:Buffer.byteLength(body),sha256:hash(body),shell:url==='/'}));
   const pack={version:'test-pack',basePath,files,bytes:files.reduce((n,f)=>n+f.bytes,0)};
-  const stored=new Map(),listeners=new Map(),requests=[];
+  const stored=new Map(),listeners=new Map(),requests=[],activations=[];
   const key=value=>new URL(typeof value==='string'?value:value.url,origin).href;
-  const cache={
-    async match(request){return stored.get(key(request))?.clone();},
-    async put(request,response){stored.set(key(request),response.clone());},
-    async delete(request){return stored.delete(key(request));},
-    async keys(){return [...stored.keys()].map(url=>new Request(url));}
-  };
-  const context={URL,Response,Request,Headers,crypto:webcrypto,setTimeout:scheduleTimeout,clearTimeout,AbortController,AbortSignal,Date,
-    caches:{async open(){await openHook?.();return cache;}},
+  const makeCache=entries=>({
+    async match(request){return entries.get(key(request))?.clone();},
+    async put(request,response){entries.set(key(request),response.clone());},
+    async delete(request){return entries.delete(key(request));},
+    async keys(){return [...entries.keys()].map(url=>new Request(url));}
+  });
+  const cache=makeCache(stored),cacheName=`duetblox-offline-${encodeURIComponent(basePath)}-${pack.version}`;
+  const buckets=new Map([[cacheName,cache]]),opened=[];
+  const openCache=async name=>{if(!buckets.has(name))buckets.set(name,makeCache(new Map()));return buckets.get(name);};
+  const context={URL,Response,Request,Headers,crypto:webcrypto,setTimeout:scheduleTimeout,clearTimeout,AbortController,AbortSignal:abortSignal,Date,
+    caches:{async open(name){await openHook?.();opened.push(name);return openCache(name);},async keys(){return [...buckets.keys()];}},
     fetch:async(input,options)=>{const url=key(input);requests.push({url,options});const hooked=await fetchHook?.(url,options);if(hooked)return hooked;const body=responses[new URL(url).pathname];return new Response(body??'not found',{status:body===undefined?404:200});},
-    self:{location:{origin},clients:{claim:async()=>{}},addEventListener:(name,fn)=>listeners.set(name,fn)}
+    self:{location:{origin},clients:{claim:async()=>{},get:async id=>clients[id]},skipWaiting:async()=>{activations.push(true);},addEventListener:(name,fn)=>listeners.set(name,fn)}
   };
   vm.runInNewContext(workerSource.replace('__DUET_OFFLINE_MANIFEST__',JSON.stringify(pack)).replace('__DUET_OFFLINE_MIRRORS__',JSON.stringify(mirrors)),context);
-  const command=(type,data={})=>{const messages=[],pending=[];listeners.get('message')({data:{type,...data},ports:[{postMessage:message=>messages.push(message)}],waitUntil:promise=>pending.push(promise)});return {messages,done:Promise.all(pending)};};
-  const finished=async(type,data={})=>{const run=command(type,data);await run.done;return run.messages.at(-1);};
+  const command=(type,data={},sender={})=>{const messages=[],pending=[];listeners.get('message')({...sender,data:{type,...data},ports:[{postMessage:message=>messages.push(message)}],waitUntil:promise=>pending.push(promise)});return {messages,done:Promise.all(pending)};};
+  const finished=async(type,data={},sender)=>{const run=command(type,data,sender);await run.done;return run.messages.at(-1);};
   const request=async(url,method='GET')=>{let answer;listeners.get('fetch')({request:new Request(new URL(url,origin),{method}),respondWith:promise=>{answer=promise;}});return answer?await answer:null;};
   const install=()=>{let result;listeners.get('install')({waitUntil:promise=>{result=promise;}});return result;};
-  return {pack,cache,requests,command,finished,request,install,stored};
+  return {pack,cache,requests,command,finished,request,install,stored,activations,openCache,buckets,opened};
 }
+
+test('only a confirmed same-origin top-level update page may activate the matching pack',async()=>{
+ const clients={valid:{id:'valid',type:'window',frameType:'top-level',url:origin+'/duetblox/update.html?retry=1'},app:{id:'app',type:'window',frameType:'top-level',url:origin+'/duetblox/'},foreign:{id:'foreign',type:'window',frameType:'top-level',url:'https://other.test/duetblox/update.html'},wrongPath:{id:'wrongPath',type:'window',frameType:'top-level',url:origin+'/update.html'},frame:{id:'frame',type:'window',frameType:'nested',url:origin+'/duetblox/update.html'},worker:{id:'worker',type:'worker',url:origin+'/duetblox/update.html'}};
+ const h=harness({basePath:'/duetblox/',responses:{'/duetblox/index.html':'studio'},clients});
+ await h.install();assert.equal(h.activations.length,0,'Ordinary installation must not skip waiting');
+ const data={version:h.pack.version,confirmed:true},sender=id=>({origin,source:{id}});
+ for(const id of ['app','foreign','wrongPath','frame','worker','missing'])assert.equal((await h.finished('ACTIVATE_UPDATE',data,sender(id))).type,'error',id);
+ for(const invalid of [{version:'older-pack',confirmed:true},{version:h.pack.version},{version:h.pack.version,confirmed:'true'}])assert.equal((await h.finished('ACTIVATE_UPDATE',invalid,sender('valid'))).type,'error');
+ assert.equal((await h.finished('ACTIVATE_UPDATE',data,{origin:'https://other.test',source:{id:'valid'}})).type,'error');
+ assert.equal((await h.finished('ACTIVATE_UPDATE',data)).type,'error');
+ assert.equal(h.activations.length,0);
+ await h.cache.put('/duetblox/student-cache',new Response('keep cached data'));
+ const result=await h.finished('ACTIVATE_UPDATE',data,sender('valid'));
+ assert.equal(result.type,'activating');assert.equal(result.version,h.pack.version);assert.equal(h.activations.length,1);
+ assert.equal(await (await h.cache.match('/duetblox/student-cache')).text(),'keep cached data');
+});
 
 test('offline pack remains unready until every file has been verified and stored',async()=>{
   const gate=deferred();let started=false;
@@ -261,6 +280,15 @@ test('offline build injects exactly the 23 pinned official shards and refuses ch
  assert.ok(Object.keys(mountedMirrors).every(url=>url.startsWith('/duetblox/models/')));
  const pwa=JSON.parse(await readFile(path.join(root,'dist/manifest.webmanifest'),'utf8'));
  assert.equal(pwa.id,'/duetblox/');assert.equal(pwa.start_url,'/duetblox/');assert.equal(pwa.scope,'/duetblox/');assert.equal(pwa.icons[0].src,'/duetblox/favicon.svg');
+ assert.equal(mountedPack.workerSha256,hash(workerSource));assert.equal(mountedPack.mirrorsSha256,hash(JSON.stringify(mountedMirrors)));
+ result=build('/duetblox/');assert.equal(result.status,0,result.stderr);
+ assert.equal(JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8')).version,mountedPack.version,'Identical inputs reproduce the exact pack version');
+ await writeFile(path.join(root,'src/offline/worker.js'),workerSource+'\n// worker-only release fixture\n');
+ result=build('/duetblox/');assert.equal(result.status,0,result.stderr);
+ const repairedPack=JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8'));
+ assert.deepEqual(repairedPack.files,mountedPack.files);assert.notEqual(repairedPack.version,mountedPack.version,'A worker-only repair must activate as a new pack');
+ result=build('/duetblox/');assert.equal(result.status,0,result.stderr);
+ assert.equal(JSON.parse(await readFile(path.join(root,'dist/offline-manifest.json'),'utf8')).version,repairedPack.version);
  files[0].source='https://untrusted.example/arbitrary';await writeFile(lock,JSON.stringify({files}));
  result=build();assert.notEqual(result.status,0);assert.match(result.stderr,/mirror differs from the verified build/);
  files[0].source=officialMirror;await writeFile(lock,JSON.stringify({files}));await writeFile(path.join(root,'dist/models',files[0].path),'changed');
@@ -328,4 +356,97 @@ test('a mounted offline pack never handles main website requests outside its exa
 
 test('mounted worker refuses an inventory that escapes its directory',()=>{
  for(const file of ['/index.html','/duetbloxish/asset','/duetblox/../index.html','https://other.example/duetblox/model'])assert.throws(()=>harness({basePath:'/duetblox/',responses:{[file]:'bad'}}),/escaped its application scope/);
+});
+
+test('same-mount older pack bytes are reverified and reused without network or inherited settings',async()=>{
+ const basePath='/duetblox/',responses={'/duetblox/':'studio','/duetblox/models/shard.bin':'weights'};
+ const h=harness({basePath,responses,fetchHook:()=>{throw new Error('Network must not be needed');}});
+ const oldName='duetblox-offline-%2Fduetblox%2F-0123456789abcdef0123',old=await h.openCache(oldName);
+ for(const [url,body] of Object.entries(responses))await old.put(url,new Response(body,{headers:{'content-encoding':'gzip','content-length':'999'}}));
+ const metadata=JSON.stringify({ready:true,offline:true,version:'older-release'});
+ await old.put('/duetblox/__duetblox_offline_state__',new Response(metadata));
+ assert.equal(await (await h.request('/duetblox/models/shard.bin')).text(),'weights','First online use also reuses verified bytes');
+ const result=await h.finished('PREPARE');assert.equal(result.type,'complete');assert.equal(result.bytes,h.pack.bytes);
+ assert.equal(h.requests.length,0);assert.equal((await h.finished('STATUS')).offline,false);
+ assert.equal(await (await old.match('/duetblox/__duetblox_offline_state__')).text(),metadata);
+ assert.equal(await (await old.match('/duetblox/models/shard.bin')).text(),'weights');
+ assert.equal((await h.cache.match('/duetblox/models/shard.bin')).headers.has('content-encoding'),false);
+ assert.equal(h.buckets.has(oldName),true,'Earlier release cache remains intact');
+});
+
+test('older changed or corrupt bytes never become current code, while a valid earlier candidate is reusable',async()=>{
+ const responses={'/duetblox/':'studio','/duetblox/bridge.js':'current code','/duetblox/model.bin':'weights'};
+ const h=harness({basePath:'/duetblox/',responses});
+ const older=await h.openCache('duetblox-offline-%2Fduetblox%2F-11111111111111111111');
+ const newer=await h.openCache('duetblox-offline-%2Fduetblox%2F-22222222222222222222');
+ await older.put('/duetblox/model.bin',new Response('weights'));
+ await newer.put('/duetblox/model.bin',new Response('WEIGHTS'));
+ await newer.put('/duetblox/bridge.js',new Response('outdated code'));
+ await h.cache.put('/duetblox/model.bin',new Response('invalid'));
+ assert.equal((await h.finished('PREPARE')).type,'complete');
+ assert.equal(await (await h.cache.match('/duetblox/bridge.js')).text(),'current code');
+ assert.equal(await (await h.cache.match('/duetblox/model.bin')).text(),'weights');
+ assert.ok(h.requests.some(r=>r.url.endsWith('/bridge.js')));assert.equal(h.requests.some(r=>r.url.endsWith('/model.bin')),false);
+ assert.equal(await (await newer.match('/duetblox/bridge.js')).text(),'outdated code');
+});
+
+test('reuse never opens root, another mount, another application or malformed release cache names',async()=>{
+ const url='/duetblox/model.bin',h=harness({basePath:'/duetblox/',responses:{[url]:'weights'}});
+ const excluded=['duetblox-offline-%2F-11111111111111111111','duetblox-offline-%2Fother%2F-11111111111111111111','website-cache','duetblox-offline-%2Fduetblox%2F-not-a-pack'];
+ for(const name of excluded)await (await h.openCache(name)).put(url,new Response('weights'));
+ assert.equal((await h.finished('PREPARE')).type,'complete');assert.equal(h.requests.length,1);
+ for(const name of excluded){assert.equal(h.opened.includes(name),false,name);assert.equal(await (await (await h.openCache(name)).match(url)).text(),'weights');}
+});
+
+test('body download deadlines retry three times with named errors and unchanged honest progress',async()=>{
+ const deadlines=[],delays=[];
+ const h=harness({responses:{'/models/slow.bin':'weights'},
+  abortSignal:{timeout(ms){deadlines.push(ms);const controller=new AbortController();setTimeout(()=>controller.abort(new DOMException('Timed out','TimeoutError')),5);return controller.signal;}},
+  scheduleTimeout:(fn,delay)=>{delays.push(delay);return setTimeout(fn,0);},
+  fetchHook:async(url,{signal})=>new Response(new ReadableStream({start(controller){signal.addEventListener('abort',()=>controller.error(signal.reason),{once:true});}}))});
+ const run=h.command('PREPARE');await run.done;const result=run.messages.at(-1);
+ assert.equal(result.type,'error');assert.match(result.message,/timed out after 60 seconds.*\/models\/slow\.bin.*duetblox\.test.*attempt 3\/3/);
+ assert.deepEqual(deadlines,[60000,60000,60000]);assert.deepEqual(delays,[250,750]);
+ const attempts=run.messages.filter(message=>message.type==='progress'&&message.attempt);
+ assert.deepEqual(attempts.map(message=>message.attempt),[1,2,3]);
+ assert.ok(attempts.every(message=>message.completed===0&&message.bytes===0&&message.file==='/models/slow.bin'));
+ assert.equal(await h.cache.match('/models/slow.bin'),undefined);assert.equal((await h.finished('STATUS')).ready,false);
+});
+
+test('cancel aborts an active download immediately and a new preparation can resume',async()=>{
+ let started=false,waiting=true,signal;
+ const h=harness({responses:{'/model.bin':'weights'},fetchHook:async(url,options)=>{
+  if(!waiting)return;started=true;signal=options.signal;
+  await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+ }});
+ const run=h.command('PREPARE');await tickUntil(()=>started);
+ assert.equal((await h.finished('CANCEL')).type,'cancelled');await run.done;
+ assert.equal(signal.aborted,true);assert.equal(run.messages.at(-1).type,'cancelled');assert.equal(h.requests.length,1);
+ assert.equal(await h.cache.match('/model.bin'),undefined);assert.equal((await h.finished('STATUS')).busy,false);
+ waiting=false;assert.equal((await h.finished('PREPARE')).type,'complete');
+});
+
+test('a terminal preparation failure aborts concurrent downloads instead of leaving competing retries',async()=>{
+ const gate=deferred();let activeSignal;
+ const h=harness({responses:{'/bad.bin':'bad','/slow.bin':'slow'},fetchHook:async(url,{signal})=>{
+  if(url.endsWith('/bad.bin')){await gate.promise;return new Response('missing',{status:404});}
+  activeSignal=signal;gate.resolve();await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+ }});
+ const result=await h.finished('PREPARE');assert.equal(result.type,'error');assert.match(result.message,/bad\.bin.*HTTP 404/);
+ assert.equal(activeSignal.aborted,true);assert.equal(await h.cache.match('/slow.bin'),undefined);assert.equal((await h.finished('STATUS')).ready,false);
+});
+
+test('cancellation during the final ready-state write rolls back readiness and never reports completion',async()=>{
+ const gate=deferred(),h=harness();let committing=false,wait=true;
+ const put=h.cache.put.bind(h.cache);
+ h.cache.put=async(request,response)=>{
+  if(wait&&String(request).endsWith('__duetblox_offline_state__')&&(await response.clone().json()).ready){committing=true;await gate.promise;}
+  await put(request,response);
+ };
+ const run=h.command('PREPARE');await tickUntil(()=>committing);
+ assert.equal((await h.finished('CANCEL')).type,'cancelled');gate.resolve();await run.done;
+ assert.equal(run.messages.at(-1).type,'cancelled');assert.equal(run.messages.some(message=>message.type==='complete'),false);
+ const status=await h.finished('STATUS');assert.equal(status.ready,false);assert.equal(status.busy,false);
+ const fetched=h.requests.length;wait=false;assert.equal((await h.finished('PREPARE')).type,'complete');
+ assert.equal(h.requests.length,fetched,'Verified completed files remain available for a later preparation');
 });

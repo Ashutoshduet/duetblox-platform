@@ -4,6 +4,7 @@ import {createBridge} from './bridge';
 import {registerDuetExtensions} from './extensions';
 import {createToolboxNavigation} from './toolbox-navigation';
 import {createResponsiveStage} from './responsive-stage';
+import {createCharacterLibrary} from './character-library';
 
 const mount = document.getElementById('app');
 const mode = new URLSearchParams(location.search).get('mode') === 'stage' ? 'stage' : 'editor';
@@ -25,12 +26,13 @@ async function editor() {
   const storage = new GUI.ScratchStorage();
   cacheDefaultProject(storage);
   addAssetStore(storage);
+  const characters = createCharacterLibrary(storage);
   const config = {storage: {
     scratchStorage: storage,
     // Projects are saved through the official Download API / File menu and the
     // parent shell. No Scratch account or write endpoint is used.
     saveProject: async () => { throw new Error('Use Save to your computer to save this DUETBlox project.'); },
-    getLibraryAssetUrl: (id, format) => editorAppPath(`scratch-media/${id}.${format}`)
+    getLibraryAssetUrl: (id, format) => characters.getAssetURL(id, format) || editorAppPath(`scratch-media/${id}.${format}`)
   }};
   const state = new GUI.EditorState({locale: 'en', showTelemetryModal: false}, () => config);
   const disposeResponsiveStage = createResponsiveStage(state, GUI.setStageSize);
@@ -52,6 +54,7 @@ async function editor() {
   GUI.setAppElement(mount);
   const root = GUI.createStandaloneRoot(state, mount);
   function renderEditor() { root.render({
+    dynamicAssets: characters.dynamicAssets,
     menuBarHidden: !menuVisible,
     canEditTitle: true, projectTitle: 'My DUETBlox project', canSave: false,
     canShare: false, canUseCloud: false, enableCommunity: false, backpackVisible: false,

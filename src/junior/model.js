@@ -1,4 +1,4 @@
-import {BACKDROP_ART, SPRITE_ART} from './assets.js';
+import {BACKDROP_ART, SPRITE_ART, SPRITE_NAMES, getBuiltinCostumes} from './assets.js';
 import {validateMediaAsset} from './media.js';
 import {normalizeJuniorScriptPosition,moveJuniorScriptPosition} from './script-layout.js';
 export const MESSAGE_COLORS = ['orange','red','blue','green','purple','yellow'];
@@ -37,7 +37,7 @@ let nextId=0;
 export function juniorId(prefix='item'){return `${prefix}-${Date.now().toString(36)}-${(++nextId).toString(36)}`;}
 export function makeJuniorBlock(type){const def=BLOCK_TYPES[type];if(!Object.hasOwn(BLOCK_TYPES,type))throw new Error('Unknown block type.');return {id:juniorId('block'),type,...(def.value===undefined?{}:{value:def.value}),...(def.text===undefined?{}:{text:def.text}),...(def.choice===undefined?{}:{choice:def.choice}),...(def.container?{children:[]}:{}),...((def.decision||def.predicate)?{condition:makeJuniorCondition()}:{}),...(def.otherwise?{elseChildren:[]}:{})};}
 export function makeJuniorScript(trigger='flag'){return {id:juniorId('script'),trigger,message:'orange',...(trigger==='key'?{key:'space'}:{}),blocks:[]};}
-export function makeJuniorSprite(kind='fox',index=0){return {id:juniorId('sprite'),name:{fox:'Fox',robot:'Robot',star:'Star'}[kind]||'Character',kind:SPRITE_ART[kind]?kind:'fox',x:index*55,y:-38,size:85,direction:90,costumeAssetIds:[],scripts:[makeJuniorScript()]};}
+export function makeJuniorSprite(kind='fox',index=0){return {id:juniorId('sprite'),name:SPRITE_NAMES[kind]||'Character',kind:SPRITE_ART[kind]?kind:'fox',x:index*55,y:-38,size:85,direction:90,costumeAssetIds:[],scripts:[makeJuniorScript()]};}
 export function makeJuniorScene(index=0){return {id:juniorId('scene'),name:['Meadow','Space','Studio'][index%3],background:['meadow','space','studio'][index%3],sprites:[makeJuniorSprite()]};}
 export function makeJuniorProject(){const scene=makeJuniorScene();scene.sprites[0].scripts[0].blocks=[{...makeJuniorBlock('move'),value:40},{...makeJuniorBlock('say'),text:'Hello, world!',value:2},{...makeJuniorBlock('turn'),value:15}];return {schema:'duetblox-junior',version:2,id:juniorId('project'),title:'My first story',selectedSceneId:scene.id,selectedSpriteId:scene.sprites[0].id,selectedScriptId:scene.sprites[0].scripts[0].id,scenes:[scene],assets:[]};}
 export function boundedNumber(value,min,max,fallback){const n=Number(value);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;}
@@ -57,7 +57,7 @@ export function parseJuniorProject(input){
   return {id:String(scene.id||juniorId('scene')).slice(0,100),name:String(scene.name||`Scene ${index+1}`).slice(0,40),background:BACKDROP_ART[scene.background]?scene.background:'meadow',...(scene.backdropAssetId?{backdropAssetId:scene.backdropAssetId}:{}),sprites:scene.sprites.map(sprite=>{
    const scripts=sprite.scripts?.length?sprite.scripts:[makeJuniorScript()];if(!Array.isArray(scripts)||scripts.length>20)throw new Error('Use between 1 and 20 scripts per character.');
    const costumes=Array.isArray(sprite.costumeAssetIds)?sprite.costumeAssetIds:[];if(costumes.length>20||costumes.some(id=>!assetIds.has(id)))throw new Error('A character references missing costume media.');
-   return {id:String(sprite.id||juniorId('sprite')).slice(0,100),name:String(sprite.name||'Character').slice(0,40),kind:SPRITE_ART[sprite.kind]?sprite.kind:'fox',x:boundedNumber(sprite.x,-240,240,0),y:boundedNumber(sprite.y,-180,180,0),size:boundedNumber(sprite.size,20,200,85),direction:boundedNumber(sprite.direction,-180,180,90),costumeAssetIds:[...new Set(costumes)],initialCostume:boundedNumber(sprite.initialCostume,0,costumes.length,0),scripts:scripts.map(script=>{
+   return {id:String(sprite.id||juniorId('sprite')).slice(0,100),name:String(sprite.name||'Character').slice(0,40),kind:SPRITE_ART[sprite.kind]?sprite.kind:'fox',x:boundedNumber(sprite.x,-240,240,0),y:boundedNumber(sprite.y,-180,180,0),size:boundedNumber(sprite.size,20,200,85),direction:boundedNumber(sprite.direction,-180,180,90),costumeAssetIds:[...new Set(costumes)],initialCostume:Math.round(boundedNumber(sprite.initialCostume,0,getBuiltinCostumes(sprite.kind).length+new Set(costumes).size-1,0)),scripts:scripts.map(script=>{
     if(!Object.hasOwn(TRIGGERS,script.trigger||'flag'))throw new Error('Unsupported Junior start event.');
     if(script.trigger==='key'&&!JUNIOR_KEYS.includes(script.key??'space'))throw new Error('Choose a supported key for the Junior start event.');
     const canvas=normalizeJuniorScriptPosition(script.canvas);

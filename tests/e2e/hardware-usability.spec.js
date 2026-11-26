@@ -11,6 +11,8 @@ async function open(page, destination) {
 async function starter(page, value = 'led') {
   await page.getByLabel('Starter circuit', {exact: true}).selectOption(value);
   await page.getByRole('button', {name: 'Load circuit', exact: true}).click();
+  // Loading waits for a durable recovery copy; pins are intentionally disabled until it completes.
+  await expect(page.getByRole('button', {name: 'Load circuit', exact: true})).toBeEnabled();
 }
 const undo = page => page.getByRole('button', {name: 'Undo circuit change', exact: true});
 const redo = page => page.getByRole('button', {name: 'Redo circuit change', exact: true});

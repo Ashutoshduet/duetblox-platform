@@ -25,3 +25,61 @@ test('private classroom stores version 5 circuit projects byte-for-byte and reje
  assert.throws(()=>validateProjectArchive(Buffer.from(bytes),'Circuit.html'),/named/);
  const future=await archive('duetblox.json',{kind:'duetblox-project',version:6});assert.throws(()=>validateProjectArchive(future,'Future.duet'),/Unsupported/);
 });
+
+test('assignments are teacher-managed and private submissions need their own receipt',async t=>{
+ const {request,dir}=await fixture(t);
+ const task={title:'Make a story',instructions:'Move, speak, then explain one change.',closed:false};
+ assert.equal((await request('assignments',{method:'POST',body:JSON.stringify(task)})).status,403);
+ const created=await request('assignments',{method:'POST',token:teacher,body:JSON.stringify(task)});assert.equal(created.status,201);const assignment=await created.json();
+ assert.equal((await(await request('assignments')).json()).assignments[0].title,task.title);
+ const bytes=await archive();const response=await request('submissions',{method:'POST',body:bytes,headers:{'X-Project-Name':'Story.sb3','X-Assignment-Id':assignment.id,'X-Student-Name':'Blue%20Fox'}});assert.equal(response.status,201);
+ const {submission,receiptKey}=await response.json();assert.equal(receiptKey.length,43);assert.equal(submission.studentName,'Blue Fox');assert.equal(submission.receiptHash,undefined);
+ assert.deepEqual((await(await request('projects')).json()).projects,[]);
+ assert.equal((await request('submissions')).status,403);
+ assert.equal((await request(`submissions/${submission.id}`)).status,403);
+ assert.equal((await request(`submissions/${submission.id}/file`)).status,403);
+ assert.equal((await request(`submissions/${submission.id}`,{headers:{'X-Submission-Key':'wrong'}})).status,403);
+ const headers={'X-Submission-Key':receiptKey};assert.equal((await request(`submissions/${submission.id}`,{headers})).status,200);
+ assert.deepEqual(Buffer.from(await(await request(`submissions/${submission.id}/file`,{headers})).arrayBuffer()),bytes);
+ assert.equal((await request(`submissions/${submission.id}`,{room:'beta',token:second,headers})).status,404);
+ const list=await(await request('submissions',{token:teacher})).json();assert.equal(list.submissions.length,1);assert.equal(JSON.stringify(list).includes(receiptKey),false);assert.equal(JSON.stringify(list).includes('receiptHash'),false);
+ const disk=await readFile(path.join(dir,'data','alpha','index.json'),'utf8');assert.equal(disk.includes(receiptKey),false);assert.match(disk,/receiptHash/);
+ const review={status:'revise',feedback:'Try changing the move distance and explain your prediction.'};
+ assert.equal((await request(`submissions/${submission.id}/review`,{method:'POST',body:JSON.stringify(review)})).status,403);
+ assert.equal((await request(`submissions/${submission.id}/review`,{method:'POST',token:teacher,body:JSON.stringify(review)})).status,200);
+ const received=await(await request(`submissions/${submission.id}`,{headers})).json();assert.equal(received.review.feedback,review.feedback);assert.equal(received.review.status,'revise');
+ assert.equal((await request(`assignments/${assignment.id}`,{method:'POST',token:teacher,body:JSON.stringify({...task,closed:true})})).status,200);
+ assert.equal((await request('submissions',{method:'POST',body:bytes,headers:{'X-Project-Name':'Late.sb3','X-Assignment-Id':assignment.id,'X-Student-Name':'Fox'}})).status,409);
+ assert.equal((await request(`submissions/${submission.id}`,{headers})).status,200);
+});
+
+test('assignment and review bounds reject malformed content without mutating saved work',async t=>{
+ const {request}=await fixture(t);
+ for(const payload of [{title:'',instructions:'Try'}, {title:'A',instructions:'x'.repeat(5001)}, {title:'A',instructions:'Try',closed:'yes'}])assert.equal((await request('assignments',{method:'POST',token:teacher,body:JSON.stringify(payload)})).status,400);
+ const assignment=await(await request('assignments',{method:'POST',token:teacher,body:JSON.stringify({title:'A',instructions:'Try a circuit'})})).json();
+ const headers={'X-Project-Name':'Work.sb3','X-Assignment-Id':assignment.id,'X-Student-Name':'Fox'};
+ assert.equal((await request('submissions',{method:'POST',headers,body:Buffer.from('not a project')})).status,400);
+ assert.equal((await request('submissions',{method:'POST',headers:{...headers,'X-Student-Name':'bad%0Aalias'},body:await archive()})).status,400);
+ const result=await(await request('submissions',{method:'POST',headers,body:await archive()})).json();
+ for(const review of [{status:'graded',feedback:'X'}, {status:'complete',feedback:'x'.repeat(3001)}, {status:'complete',feedback:22}])assert.equal((await request(`submissions/${result.submission.id}/review`,{method:'POST',token:teacher,body:JSON.stringify(review)})).status,400);
+ assert.equal((await(await request(`submissions/${result.submission.id}`,{token:teacher})).json()).review,null);
+});
+
+test('concurrent assignment submissions retain distinct private receipts and survive server restart',async t=>{
+ const {request,dir}=await fixture(t);
+ const task=await(await request('assignments',{method:'POST',token:teacher,body:JSON.stringify({title:'Two stories',instructions:'Explain your code.'})})).json();
+ const bytes=await archive();const results=await Promise.all(['Fox','Robot'].map(async alias=>{const response=await request('submissions',{method:'POST',body:bytes,headers:{'X-Project-Name':alias+'.sb3','X-Assignment-Id':task.id,'X-Student-Name':alias}});assert.equal(response.status,201);return response.json();}));
+ assert.notEqual(results[0].receiptKey,results[1].receiptKey);assert.equal((await request(`submissions/${results[0].submission.id}`,{headers:{'X-Submission-Key':results[1].receiptKey}})).status,403);
+ const restarted=await createClassroomServer({dataDir:path.join(dir,'data'),rooms:{alpha:{teacher,student}}});await new Promise(resolve=>restarted.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>restarted.close(resolve)));
+ const base=`http://127.0.0.1:${restarted.address().port}/api/classroom/rooms/alpha`;
+ const list=await(await fetch(base+'/submissions',{headers:{Authorization:`Bearer ${teacher}`}})).json();assert.equal(list.submissions.length,2);
+ const saved=await fetch(`${base}/submissions/${results[0].submission.id}`,{headers:{Authorization:`Bearer ${student}`,'X-Submission-Key':results[0].receiptKey}});assert.equal(saved.status,200);
+});
+
+test('mounted browser releases are served at their manifest path while classroom API remains at the origin',async t=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'duet-classroom-mounted-'));
+ const dist=path.join(dir,'dist');await mkdir(path.join(dist,'assets'),{recursive:true});await writeFile(path.join(dist,'index.html'),'<h1>Mounted app</h1>');await writeFile(path.join(dist,'assets','app.js'),'/* mounted script */');await writeFile(path.join(dist,'offline-manifest.json'),JSON.stringify({basePath:'/duetblox/'}));
+ const server=await createClassroomServer({dataDir:path.join(dir,'data'),distDir:dist,rooms:{alpha:{teacher,student}}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(async()=>{await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});const base=`http://127.0.0.1:${server.address().port}`;
+ const root=await fetch(base,{redirect:'manual'});assert.equal(root.status,307);assert.equal(root.headers.get('location'),'/duetblox/');assert.match(await(await fetch(base+'/duetblox/')).text(),/Mounted app/);assert.match(await(await fetch(base+'/duetblox/assets/app.js')).text(),/mounted script/);assert.equal((await fetch(base+'/assets/app.js')).status,404);
+ assert.equal((await fetch(base+'/api/classroom/rooms/alpha/session',{headers:{Authorization:`Bearer ${student}`}})).status,200);
+});

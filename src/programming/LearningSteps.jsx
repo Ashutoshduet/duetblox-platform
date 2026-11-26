@@ -6,14 +6,14 @@ import {blockLabel} from './project-map.js';
 
 const idle = {active:false,status:'idle',stepCount:0,last:null,next:null,threadCount:0,reason:null};
 export default function LearningSteps({iframe, ready, active}) {
-  const [state,setState]=useState(idle),[busy,setBusy]=useState(false),[error,setError]=useState(''),[issues,setIssues]=useState([]),[values,setValues]=useState([]);
+  const [state,setState]=useState(idle),[busy,setBusy]=useState(false),[error,setError]=useState(''),[issues,setIssues]=useState([]),[values,setValues]=useState([]),[breakpoints,setBreakpoints]=useState([]),[breakpoint,setBreakpoint]=useState('');
   const generation=useRef(0),operation=useRef(null),current=useRef(state),enabled=useRef(false),stateVersion=useRef(0);
   enabled.current=Boolean(ready&&active);
   const acceptState=value=>{stateVersion.current++;current.current=value;setState(value);};
   useEffect(()=>{
     const epoch=++generation.current,frame=iframe.current;
     const isCurrent=()=>generation.current===epoch&&enabled.current&&iframe.current===frame;
-    acceptState(idle);setBusy(false);setValues([]);
+    acceptState(idle);setBusy(false);setValues([]);setBreakpoints([]);setBreakpoint('');
     const listener=event=>{
       if(!isCurrent()||event.origin!==location.origin||event.source!==frame?.contentWindow||event.data?.channel!=='duetblox')return;
       if(event.data.type==='learningStatus'){
@@ -29,7 +29,7 @@ export default function LearningSteps({iframe, ready, active}) {
         stateVersion.current++;
         const pending=operation.current;operation.current=null;
         if(pending?.startSent)sendEditor(frame,'learningStop').catch(()=>{});
-        setBusy(false);setIssues([]);setError('');setValues([]);
+        setBusy(false);setIssues([]);setError('');setValues([]);setBreakpoints([]);setBreakpoint('');
       }
     };
     window.addEventListener('message',listener);
@@ -46,7 +46,7 @@ export default function LearningSteps({iframe, ready, active}) {
       current.current=idle;
     };
   },[iframe,ready,active]);
-  const run=async type=>{
+  const run=async (type,payload={})=>{
     if(!enabled.current||operation.current)return;
     const frame=iframe.current,epoch=generation.current,request={startSent:false};
     operation.current=request;stateVersion.current++;
@@ -58,14 +58,14 @@ export default function LearningSteps({iframe, ready, active}) {
         setValues([]);
         const check=await sendEditor(frame,'learningCheck');
         if(!isCurrent())return;
-        setIssues(check.issues||[]);if(!check.ok)return;
+        setIssues(check.issues||[]);setBreakpoints(check.breakpoints||[]);setBreakpoint('');if(!check.ok)return;
         if(!Number.isSafeInteger(check.revision))throw new Error('Reload DUETBlox to update the Learning steps editor.');
         expectedRevision=check.revision;
         await sendEditor(frame,'setEditorTab',{tab:'code'});
         if(!isCurrent())return;
         request.startSent=true;
       }
-      const next=await sendEditor(frame,type,type==='learningStart'?{expectedRevision}:{});
+      const next=await sendEditor(frame,type,type==='learningStart'?{expectedRevision}:payload);
       if(!isCurrent())return;
       request.startSent=false;acceptState(next);
       const observed=await sendEditor(frame,'watchValues');
@@ -90,9 +90,14 @@ export default function LearningSteps({iframe, ready, active}) {
         <button className="small-button" disabled={!ready||!active||busy} onClick={()=>run('learningStop')}><Square size={14}/> Stop learning run</button>
       </>}
     </div>
+    {state.active&&breakpoints.length>0&&<div className="learning-breakpoint">
+      <label>Pause before a command<select aria-label="Learning breakpoint" value={breakpoint} disabled={busy} onChange={event=>setBreakpoint(event.target.value)}><option value="">Choose a block</option>{breakpoints.map((item,index)=><option key={`${item.targetId}:${item.blockId}`} value={String(index)}>{item.targetName} · {blockLabel(item)} · {index+1}</option>)}</select></label>
+      <button className="small-button" disabled={busy||!ready||!active||breakpoint===''} onClick={()=>{const selected=breakpoints[Number(breakpoint)];if(selected)run('learningRunUntil',{targetId:selected.targetId,blockId:selected.blockId,expectedRevision:state.revision});}}>Run to breakpoint</button>
+      <p>Stops before the chosen command, or after 100 execution steps. Nothing runs while paused. A block in an unused script or an untaken branch may never be reached.</p>
+    </div>}
     {(state.last||state.next)&&<div className="learning-sequence">{state.last&&<div><small>JUST VISITED</small><strong>{blockLabel(state.last)}</strong><span>{state.last.targetName}</span></div>}{state.next&&<div><small>UP NEXT</small><strong>{blockLabel(state.next)}</strong><span>{state.next.targetName}</span></div>}{!state.next&&state.status==='completed'&&<div><CheckCircle2 size={22}/><strong>All selected scripts finished.</strong></div>}</div>}
     {values.length>0&&['paused','completed'].includes(state.status)&&<div className="learning-values"><small>VALUES AT THIS STEP · up to 12 variables/lists</small><dl className="coding-values">{values.map(item=><div key={item.id}><dt>{item.name}<small>{item.targetName}</small></dt><dd>{item.type==='list'?item.value.join(', '):item.value}</dd></div>)}</dl></div>}
     {issues.length>0&&<div className="learning-scope-issues"><strong>This project needs normal Run</strong><ul>{issues.slice(0,6).map((issue,i)=><li key={`${issue.blockId}-${i}`}>{issue.targetName}: {issue.message}</li>)}</ul>{issues.length>6&&<p>And {issues.length-6} more unsupported blocks.</p>}<p>You can keep this project intact and use Run. To learn in steps, open a core-block example or remove the listed blocks.</p></div>}
-    <details className="coding-scope"><summary>Which programs can I step through?</summary><p>Green-flag programs using supported motion, looks, variables, lists, conditions, loops and non-warp My Blocks. Each step executes the next command with its reporter inputs. The green-flag hat is skipped; loop tests and My Block calls can take their own step.</p><p>Waits, glides, sound, clones, other event hats, hardware, ML and other extensions need normal Run. The whole project is checked, including unused blocks, before a learning run starts. Editing or closing this view stops the learning run.</p><p>Multiple green-flag scripts take turns. This mode teaches program logic; it does not reproduce the timing of normal execution.</p></details>
+    <details className="coding-scope"><summary>Which programs can I step through?</summary><p>Green-flag programs using supported motion, looks, variables, lists, conditions, loops and non-warp My Blocks. Each step executes the next command with its reporter inputs. The green-flag hat is skipped; loop tests and My Block calls can take their own step.</p><p>Waits, glides, sound, clones, other event hats, hardware, ML and other extensions need normal Run. The whole project is checked, including unused blocks, before a learning run starts. Editing or closing this view stops the learning run.</p><p>Breakpoints work with these same supported commands; reporters execute with their parent command. Multiple green-flag scripts take turns. This mode teaches program logic; it does not reproduce the timing of normal execution.</p></details>
   </div>;
 }

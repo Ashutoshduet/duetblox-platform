@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import {datasetGuard,hydrateDataset,scheduleDatasetSave,loadDatasetOperation} from './dataset-lifecycle.js';
 import QualityPanel from './QualityPanel.jsx';
 import Dialog from '../components/Dialog.jsx';
+import {imageLessonDataset} from '../learn/activity-starters.js';
 import DatasetRecovery,{useDatasetRecovery,ModelReadyAction} from './DatasetRecovery.jsx';
 import {importErrorMessage} from './dataset-recovery.js';
 const evaluationImageSamples=async file=>[await imageFileData(file)];
@@ -26,7 +27,7 @@ export default function MLStudio({active,visible=active,onUseModel,onStatus}){
   const capture=id=>attempt(()=>{const shot=imageModel.capture();edit(old=>old.map(c=>c.id===id?{...c,samples:[...c.samples,shot].slice(0,300)}:c));});
   const train=()=>attempt(async()=>{setTesting(false);await imageModel.train(classes,{epochs});setChanged(false);onStatus?.('Image model trained and saved in this browser.');});
   const replace=next=>recovery.replace(async()=>({kind:'duetblox-image-dataset',version:1,classes:validateDataset(next)}),data=>edit(data.classes));
-  const example=()=>attempt(async()=>{const make=(label,color,kind)=>({id:crypto.randomUUID(),name:label,samples:Array.from({length:12},(_,i)=>{const c=document.createElement('canvas');c.width=c.height=224;const x=c.getContext('2d');x.fillStyle='#faf8f0';x.fillRect(0,0,224,224);x.fillStyle=color;const offset=(i%4-1.5)*8,size=56+i%3*7;if(kind==='circle'){x.beginPath();x.arc(112+offset,112-offset,size,0,Math.PI*2);x.fill();}else x.fillRect(112-size+offset,112-size-offset,size*2,size*2);return c.toDataURL('image/jpeg',.9);})});await replace({kind:'duetblox-image-dataset',version:1,classes:[make('Orange circle','#e8733b','circle'),make('Blue square','#4b81d0','square')]});setNotice('Example dataset loaded. Train it, then upload a new image or test a sample.');});
+  const example=()=>attempt(async()=>{await replace(imageLessonDataset());setNotice('Example dataset loaded. Train it, then upload a new image. These examples can teach color rather than shape; test both.');});
   const exportDataset=()=>downloadBlob(new Blob([JSON.stringify({kind:'duetblox-image-dataset',version:1,classes})],{type:'application/json'}),'DUETBlox-image-dataset.json');
   const importDataset=e=>{const file=e.target.files?.[0];e.target.value='';if(file)attempt(async()=>{if(file.size>50e6)throw new Error('Choose a dataset smaller than 50 MB.');await recovery.replace(async()=>{const parsed=JSON.parse(await file.text());validateDataset(parsed);return parsed;},parsed=>edit(parsed.classes));});};
   const importModelFiles=e=>{const files=Array.from(e.target.files);e.target.value='';attempt(async()=>{setActionBusy(true);try{if(files.length===1&&files[0].name.endsWith('.zip')){const current=datasetGuard(imageModel,()=>mounted.current);const zip=await JSZip.loadAsync(files[0]);const artifact=await modelFromZip(zip);if(!current())return;await imageModel.importArtifact(artifact);}else await imageModel.importFiles(files);setChanged(false);setImportOpen(false);}finally{setActionBusy(false);}});};

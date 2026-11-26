@@ -1,4 +1,4 @@
-import {ASSET_IDS,BACKDROP_ART,BEEP_BASE64,SPRITE_ART} from './assets.js';
+import {ASSET_IDS,BACKDROP_ART,BEEP_BASE64,SPRITE_ART,getBuiltinCostumes,juniorCostumeChoices} from './assets.js';
 import {BLOCK_TYPES,boundedNumber,MESSAGE_COLORS,JUNIOR_KEYS,validateJuniorCondition} from './model.js';
 import {JUNIOR_ACTION_TYPES,JUNIOR_CANCEL_VARIABLE,juniorActionVariable,completedJuniorAction} from './completion.js';
 const SCENE='junior-active-scene',SPEED='junior-speed';
@@ -54,7 +54,12 @@ export function compileJuniorProject(project,{trackCompletion=false}={}){
  scenes.forEach((scene,sceneIndex)=>scene.sprites.forEach((sprite,spriteIndex)=>{
   const prefix=`scene${sceneIndex}-${sprite.id}`,build=builder(prefix,broadcasts),speedId=`${prefix}-${SPEED}`,speed=variable('Speed',speedId),active=eq(currentScene,scene.id),positionX=expr('motion_xposition'),positionY=expr('motion_yposition');
   const x=boundedNumber(sprite.x,-240,240,0),y=boundedNumber(sprite.y,-180,180,0),size=boundedNumber(sprite.size,20,200,85),direction=boundedNumber(sprite.direction,-180,180,90);
-  addOriginal(sprite.kind);const spriteCostumes=[originalCostume(sprite.name,sprite.kind),...(sprite.costumeAssetIds||[]).map(id=>{const asset=media.get(id);if(!asset)throw new Error('A costume is missing.');addCustom(asset);return customCostume(asset,`${asset.name} ${id.slice(0,5)}`);})];
+  const builtins=getBuiltinCostumes(sprite.kind);
+  const spriteCostumes=[...builtins.map(costume=>{
+   const md5ext=`${costume.assetId}.svg`;
+   add(md5ext,{md5ext,dataFormat:'svg',data:costume.svg});
+   return {name:builtins.length===1?sprite.name:costume.name,assetId:costume.assetId,dataFormat:'svg',md5ext,bitmapResolution:1,rotationCenterX:costume.rotationCenterX,rotationCenterY:costume.rotationCenterY};
+  }),...(sprite.costumeAssetIds||[]).map(id=>{const asset=media.get(id);if(!asset)throw new Error('A costume is missing.');addCustom(asset);return customCostume(asset,`${asset.name} ${id.slice(0,5)}`);})];
   const initialCostume=Math.min(spriteCostumes.length-1,Math.max(0,Math.round(sprite.initialCostume||0)));
 	  function conditionFor(value){
 	   const condition=validateJuniorCondition(value);
@@ -93,7 +98,7 @@ export function compileJuniorProject(project,{trackCompletion=false}={}){
     case'resetSize':return [command('looks_setsizeto',{SIZE:size})];
     case'show':return [command('looks_show')];case'hide':return [command('looks_hide')];
     case'nextCostume':return [command('looks_nextcostume')];
-    case'costume':return [command('looks_switchcostumeto',{COSTUME:choice==='first'?spriteCostumes[0].name:spriteCostumes[(sprite.costumeAssetIds||[]).indexOf(choice)+1]?.name||spriteCostumes[0].name})];
+    case'costume':return [command('looks_switchcostumeto',{COSTUME:spriteCostumes[Math.max(0,juniorCostumeChoices(sprite,project.assets).findIndex(costume=>costume.choice===choice))].name})];
     case'repeat':return [{...command('control_repeat',{TIMES:Math.round(v)}),children:compile(source.children||[])}];
     case'forever':return [{...command('control_forever'),children:compile(source.children||[])}];
 	    case'if':case'ifElse':return [{...command(source.type==='ifElse'?'control_if_else':'control_if',{CONDITION:conditionFor(source.condition)}),children:compile(source.children||[]),...(source.type==='ifElse'?{elseChildren:compile(source.elseChildren||[])}:{})}];

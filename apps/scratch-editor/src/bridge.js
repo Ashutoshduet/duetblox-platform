@@ -3,9 +3,9 @@ import {createExecutionControls} from './execution-controls';
 import {createJuniorCompletionTracker,JUNIOR_ACTION_TYPES,JUNIOR_CANCEL_VARIABLE,juniorActionVariable} from '../../../src/junior/completion.js';
 import {SCRATCH_BRIDGE_CAPABILITIES} from '../../../src/scratch-protocol.js';
 const CHANNEL = 'duetblox';
-const COMMANDS = new Set(['loadProject', 'resetProject', 'saveProject', 'getProject', 'greenFlag', 'stopAll', 'status', 'addExtension', 'keyboard', 'ping', 'setBoard', 'showBlock', 'watchValues', 'learningCheck', 'learningStart', 'learningStep', 'learningResume', 'learningStop', 'learningStatus', 'setEditorTab', 'setEditorMenu', 'getBlockCategories', 'selectBlockCategory']);
+const COMMANDS = new Set(['loadProject', 'resetProject', 'saveProject', 'getProject', 'greenFlag', 'stopAll', 'status', 'addExtension', 'keyboard', 'ping', 'setBoard', 'showBlock', 'watchValues', 'learningCheck', 'learningStart', 'learningStep', 'learningRunUntil', 'learningResume', 'learningStop', 'learningStatus', 'resizeEditor', 'setEditorTab', 'setEditorMenu', 'getBlockCategories', 'selectBlockCategory']);
 const builtins = new Set(['pen', 'music', 'videoSensing', 'faceSensing', 'text2speech', 'translate', 'microbit', 'wedo2', 'ev3', 'boost', 'makeymakey', 'gdxfor']);
-const executionCommands = new Set(['greenFlag', 'learningStart', 'learningStep', 'learningResume']);
+const executionCommands = new Set(['greenFlag', 'learningStart', 'learningStep', 'learningRunUntil', 'learningResume']);
 const priorityCommands = new Set(['stopAll', 'status', 'ping']);
 
 export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onShowBlocks, onSetEditorTab, onSetEditorMenu, onGetBlockCategories, onSelectBlockCategory}) {
@@ -59,9 +59,19 @@ export function createBridge(vm, {mode, ready, onAddExtension, onSetBoard, onSho
     learningCheck: () => requireLearning().check(),
     learningStart: payload => requireLearning().start(payload.expectedRevision),
     learningStep: () => requireLearning().step(),
+    learningRunUntil: payload => requireLearning().runUntil(payload),
     learningResume: () => requireLearning().resume(),
     learningStop: () => requireLearning().stop('Learning steps stopped.'),
     learningStatus: () => requireLearning().snapshot(),
+    resizeEditor: async () => {
+      if (mode !== 'editor') throw new Error('Workspace resizing is available in the normal block editor.');
+      // A parent can reveal an already-mounted iframe without changing the
+      // GUI's internal Code-tab visibility. Ask its normal resize listeners to
+      // recompute layout; never rewrite the student's block coordinates.
+      window.dispatchEvent(new Event('resize'));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return {width: window.innerWidth, height: window.innerHeight};
+    },
     setEditorTab: payload => {
       if (mode !== 'editor' || !onSetEditorTab) throw new Error('Editor tabs are available in the normal block editor.');
       if (!['code', 'costumes', 'sounds'].includes(payload.tab)) throw new Error('Choose code, costumes or sounds.');

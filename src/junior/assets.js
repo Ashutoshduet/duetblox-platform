@@ -1,5 +1,9 @@
+import {ZUNI_COSTUMES} from '../characters/zuni.js';
+import {md5} from './media.js';
+
 // Original DuetBlox artwork. No Scratch or PictoBlox artwork is reproduced.
 export const SPRITE_ART = {
+  zuni: ZUNI_COSTUMES[0].svg,
   fox: `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="104" viewBox="0 0 112 104"><path d="M75 69c30-17 40 3 23 19-9 8-20 6-28-1" fill="#e87745"/><path d="M98 88c10-9 10-18 4-23l-9 16z" fill="#fff1db"/><ellipse cx="54" cy="78" rx="27" ry="22" fill="#e87745"/><path d="M36 80v17m32-17v17" stroke="#b95634" stroke-width="11" stroke-linecap="round"/><path d="M21 40 18 8 42 26M67 26 92 8 89 43" fill="#e87745" stroke="#b95634" stroke-width="3" stroke-linejoin="round"/><path d="m23 16 4 22 12-9m35 0 11-13-2 23" fill="#ffd4c5"/><path d="M20 39c5-21 68-21 72 0 4 18-13 36-36 38-24-2-40-20-36-38" fill="#f79359"/><path d="M22 43c11-3 24 1 34 17 11-16 24-20 35-17-2 17-15 30-35 32-18-2-31-15-34-32" fill="#fff1db"/><ellipse cx="37" cy="43" rx="4" ry="6" fill="#29324b"/><ellipse cx="74" cy="43" rx="4" ry="6" fill="#29324b"/><path d="m51 57 5 6 5-6z" fill="#29324b"/><path d="M48 65q8 8 16 0" fill="none" stroke="#29324b" stroke-width="2.5" stroke-linecap="round"/></svg>`,
   robot: `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="112" viewBox="0 0 100 112"><path d="M50 18V9" stroke="#626bc4" stroke-width="5"/><circle cx="50" cy="7" r="6" fill="#ffbe57"/><rect x="17" y="18" width="66" height="47" rx="17" fill="#8f9af4"/><rect x="25" y="27" width="50" height="26" rx="9" fill="#263958"/><circle cx="38" cy="39" r="5" fill="#a7f0ee"/><circle cx="62" cy="39" r="5" fill="#a7f0ee"/><path d="M42 49q8 6 16 0" fill="none" stroke="#a7f0ee" stroke-width="2"/><rect x="26" y="69" width="48" height="28" rx="10" fill="#8f9af4"/><path d="M20 75 11 90m69-15 9 15M37 96v9m26-9v9" stroke="#626bc4" stroke-width="10" stroke-linecap="round"/><circle cx="50" cy="82" r="7" fill="#ffbe57"/><rect x="8" y="34" width="8" height="17" rx="4" fill="#626bc4"/><rect x="84" y="34" width="8" height="17" rx="4" fill="#626bc4"/></svg>`,
   star: `<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108"><path d="m54 7 14 29 32 5-23 23 5 32-28-15-29 15 6-32L8 41l32-5z" fill="#ffd166" stroke="#eaaa36" stroke-width="3" stroke-linejoin="round"/><ellipse cx="42" cy="53" rx="4" ry="6" fill="#394059"/><ellipse cx="66" cy="53" rx="4" ry="6" fill="#394059"/><path d="M43 67q11 13 22 0" fill="none" stroke="#394059" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="64" r="5" fill="#f7ae6b"/><circle cx="77" cy="64" r="5" fill="#f7ae6b"/></svg>`,
@@ -10,6 +14,20 @@ export const BACKDROP_ART = {
   space: `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360"><rect width="480" height="360" fill="#25284d"/><g fill="#fff0c4"><circle cx="45" cy="51" r="2"/><circle cx="112" cy="102" r="2"/><circle cx="226" cy="46" r="2"/><circle cx="302" cy="144" r="2"/><circle cx="430" cy="41" r="2"/><circle cx="409" cy="216" r="2"/><circle cx="78" cy="234" r="2"/><circle cx="202" cy="187" r="2"/><circle cx="340" cy="80" r="2"/></g><circle cx="370" cy="105" r="33" fill="#a6a0dd"/><ellipse cx="370" cy="106" rx="55" ry="13" transform="rotate(-25 370 106)" fill="none" stroke="#c9bcef" stroke-width="6"/><path d="M0 329Q120 267 255 315T480 311V360H0Z" fill="#56557c"/><ellipse cx="111" cy="333" rx="36" ry="8" fill="#434366"/></svg>`,
   studio: `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360"><rect width="480" height="360" fill="#f5f0ff"/><path d="M0 276h480v84H0z" fill="#e5def2"/><path d="M0 276h480M80 276 42 360m118-84-20 84m100-84v84m80-84 20 84m60-84 38 84M0 316h480" fill="none" stroke="#d6cce8" stroke-width="2"/><rect x="30" y="29" width="91" height="126" rx="45" fill="#d8e6f4"/><path d="M75 29v126M30 92h91" stroke="#f5f0ff" stroke-width="8"/><circle cx="396" cy="76" r="24" fill="#f5cf8d"/></svg>`,
 };
+
+export const SPRITE_NAMES = {zuni:'Zuni',fox:'Fox',robot:'Robot',star:'Star'};
+const ORIGINAL_SIZES = {fox:[112,104],robot:[100,112],star:[108,108]};
+const BUILTIN_COSTUMES = Object.fromEntries(Object.keys(SPRITE_ART).map(kind => [kind,
+  (kind === 'zuni' ? ZUNI_COSTUMES : [{id:'original',name:'Original',svg:SPRITE_ART[kind],width:ORIGINAL_SIZES[kind][0],height:ORIGINAL_SIZES[kind][1]}])
+    .map((costume,index) => ({...costume,choice:index === 0 ? 'first' : `builtin:${costume.id}`,
+      assetId:md5(new TextEncoder().encode(costume.svg)),rotationCenterX:costume.width/2,rotationCenterY:costume.height/2}))
+]));
+export function getBuiltinCostumes(kind) {return BUILTIN_COSTUMES[kind] || BUILTIN_COSTUMES.fox;}
+// Keep built-in and uploaded costume ordering identical in the editor and compiler.
+export function juniorCostumeChoices(sprite,assets=[]) {
+  return [...getBuiltinCostumes(sprite.kind).map(({choice,name})=>({choice,name})),
+    ...(sprite.costumeAssetIds||[]).map(id=>({choice:id,name:assets.find(asset=>asset.id===id)?.name||'Costume'}))];
+}
 
 export const artDataURL = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 

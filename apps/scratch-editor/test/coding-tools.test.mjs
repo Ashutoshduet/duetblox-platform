@@ -416,3 +416,24 @@ test('Run explains upload-only board hats while executing ordinary browser scrip
     assert.deepEqual(errors, []);
   } finally {await page.close();}
 });
+
+test('revealed editor resize uses its visible viewport without rewriting saved block positions', {timeout: 90000}, async () => {
+  const {page,frame,errors}=await open();
+  try {
+    const fixture=hardwareFixture((await command(page,'getProject')).project);
+    await page.evaluate(()=>{const iframe=document.querySelector('iframe');iframe.style.display='none';iframe.style.width='820px';iframe.style.height='650px';});
+    await command(page,'loadProject',{project:fixture});
+    const before=(await command(page,'getProject')).project.targets.find(target=>!target.isStage).blocks;
+    await page.evaluate(()=>{document.querySelector('iframe').style.display='block';});
+    const viewport=await command(page,'resizeEditor');
+    assert.deepEqual(viewport,{width:820,height:650});
+    const bounds=await frame.locator('.blocklySvg').first().boundingBox();
+    assert.ok(bounds.width>0&&bounds.width<=820,'Blockly fits the revealed iframe');
+    assert.ok(bounds.height>0&&bounds.height<=650,'Blockly has usable height');
+    const after=(await command(page,'getProject')).project.targets.find(target=>!target.isStage).blocks;
+    for(const id of ['flag','analogRead'])assert.deepEqual({x:after[id].x,y:after[id].y},{x:before[id].x,y:before[id].y},'Resize cannot move saved scripts');
+    await page.evaluate(()=>{document.querySelector('iframe').style.width='1100px';});
+    assert.equal((await command(page,'resizeEditor')).width,1100);
+    assert.deepEqual(errors,[]);
+  } finally {await page.close();}
+});

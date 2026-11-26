@@ -15,7 +15,32 @@ test('prepared production app cold-opens offline and runs SPICE, Python, ML and 
  console.log(`Offline shell installed in ${Date.now()-installStarted} ms`);
  await page.getByRole('button',{name:'Make available offline',exact:true}).click();
  const prepareStarted=Date.now();
- await expect(page.getByRole('heading',{name:'Your offline pack is ready',exact:true})).toBeVisible({timeout:prepareTimeout});
+ const preparation=page.getByRole('region',{name:'Offline preparation',exact:true});
+ let progressRead=Promise.resolve(),readingProgress=false;
+ const progressTimer=setInterval(()=>{
+  if(readingProgress)return;
+  readingProgress=true;
+  progressRead=preparation.locator('[aria-live="polite"] p').textContent({timeout:1000})
+   .then(text=>console.log(`Offline preparation ${Math.round((Date.now()-prepareStarted)/1000)}s: ${text?.trim()||'waiting for verified progress'}`))
+   .catch(()=>console.log(`Offline preparation ${Math.round((Date.now()-prepareStarted)/1000)}s: verified progress unavailable`))
+   .finally(()=>{readingProgress=false;});
+ },30000);
+ try{
+  // Resolve on either terminal state so an early worker error is not hidden
+  // behind the much longer network-dependent preparation timeout.
+  const outcome=await page.waitForFunction(()=>{
+   const region=document.querySelector('section[aria-label="Offline preparation"]');
+   const error=region?.querySelector('[role="alert"]')?.textContent?.trim();
+   if(error)return {error};
+   if(region?.querySelector('h2')?.textContent?.trim()==='Your offline pack is ready')return {ready:true};
+   return null;
+  },undefined,{timeout:prepareTimeout,polling:100});
+  const result=await outcome.jsonValue();await outcome.dispose();
+  if(result.error)throw new Error(`Offline preparation failed: ${result.error}`);
+  await expect(preparation.getByRole('heading',{name:'Your offline pack is ready',exact:true})).toBeVisible();
+ }finally{
+  clearInterval(progressTimer);await progressRead;
+ }
  console.log(`Offline pack verified in ${Date.now()-prepareStarted} ms`);
  await page.getByLabel('Use offline mode',{exact:true}).click();await expect(page.getByLabel('Use offline mode',{exact:true})).toBeChecked();
  await context.setOffline(true);await page.close();page=await context.newPage();

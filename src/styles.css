@@ -16,3 +16,23 @@ a.lab-banner .banner-icon{background:#dceaf3;color:#3f7190}
 
 /* Keep every workspace reachable on short screens and expose long transitions. */
 .sidebar nav{min-height:0;overflow-y:auto;flex:1}.sidebar-bottom{flex-shrink:0}.workspace-switch-status{position:fixed;bottom:42px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border:1px solid #ccd9d0;border-radius:8px;box-shadow:0 3px 18px #163f2926;z-index:250;font-size:14px}.workspace-switch-status .spinner{width:20px;height:20px;margin:0;flex:none}button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #286ca8;outline-offset:3px}
+
+/* Keep workspace names available to beginning readers in compact navigation. */
+.sidebar .nav-item{flex-shrink:0;min-width:0;white-space:normal}
+.sidebar .nav-item span{min-width:0;white-space:normal;overflow-wrap:anywhere}
+.app.editor-mode .sidebar{padding-left:4px;padding-right:4px}
+.app.editor-mode .sidebar .nav-item{flex-direction:column;gap:5px;padding:9px 1px;min-height:48px}
+.app.editor-mode .sidebar .nav-item span{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;font-size:10.5px;line-height:1.25;text-align:center}
+.app.editor-mode .sidebar .workspace-nav-heading{height:1px;overflow:hidden;font-size:0;padding:0;margin:12px 4px;border-top:1px solid var(--line)}
+@media(max-width:850px){
+ .app .sidebar{padding-left:4px;padding-right:4px}
+ .app .sidebar .nav-item{flex-direction:column;gap:5px;padding:9px 1px;min-height:48px}
+ .app .sidebar .nav-item span{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;font-size:10.5px;line-height:1.25;text-align:center}
+ .app .sidebar .workspace-nav-heading{display:block;height:1px;overflow:hidden;font-size:0;padding:0;margin:12px 4px;border-top:1px solid var(--line)}
+}
+@media(max-width:600px){
+ .app .sidebar{width:74px;padding-left:4px;padding-right:4px}
+ .app .app-main{margin-left:74px;width:calc(100% - 74px)}
+}
+
+.sidebar nav{scrollbar-width:thin;scrollbar-color:#a9bdb2 transparent}.sidebar nav::-webkit-scrollbar{width:6px}.sidebar nav::-webkit-scrollbar-thumb{background:#a9bdb2;border-radius:6px}
