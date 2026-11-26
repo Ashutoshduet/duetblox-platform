@@ -62,6 +62,33 @@ test('workspace URLs support refresh, Back, Forward, and direct links',async({pa
   await page.goto('./#/projects');await expect(page.getByRole('heading',{name:'My projects',exact:true})).toBeVisible();
 });
 
+test('the latest direct workspace link is retained while browser storage restores',async({page})=>{
+  await page.addInitScript(()=>{
+    window.navigationRestoreProbe={held:false,events:0};
+    addEventListener('popstate',()=>{window.navigationRestoreProbe.events++;});
+    const get=IDBObjectStore.prototype.get;
+    IDBObjectStore.prototype.get=function(key){
+      const request=get.call(this,key);
+      if(key==='current-workspace')Object.defineProperty(request,'onsuccess',{configurable:true,set(fn){
+        request.addEventListener('success',event=>{window.navigationRestoreProbe.held=true;window.releaseWorkspaceRestore=()=>fn.call(request,event);});
+      }});
+      return request;
+    };
+  });
+  await page.goto('./#/circuits');
+  await expect.poll(()=>page.evaluate(()=>window.navigationRestoreProbe.held)).toBe(true);
+  await expect(page.locator('.sidebar .nav-item.active')).toHaveText('Circuit Lab');
+  await expect(page.getByRole('button',{name:'Save project',exact:true})).toBeDisabled();
+  await page.goto('./#/learn');
+  await expect.poll(()=>page.evaluate(()=>window.navigationRestoreProbe.events)).toBe(1);
+  await page.goto('./#/projects');
+  await expect.poll(()=>page.evaluate(()=>window.navigationRestoreProbe.events)).toBe(2);
+  await page.evaluate(()=>window.releaseWorkspaceRestore());
+  await expect(page.getByRole('heading',{name:'My projects',exact:true})).toBeVisible();
+  await expect(page).toHaveURL(/#\/projects$/);
+  await expect(page.getByRole('button',{name:'Save project',exact:true})).toBeEnabled();
+});
+
 test('Help traps keyboard focus, closes on Escape and returns focus to its opener',async({page})=>{
   await page.goto('./');const opener=page.getByRole('button',{name:'Help & about',exact:true});await opener.click();
   const dialog=page.getByRole('dialog');await expect(dialog).toBeVisible();
