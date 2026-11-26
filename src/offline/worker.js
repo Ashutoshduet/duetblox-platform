@@ -2,7 +2,8 @@
 const PACK = __DUET_OFFLINE_MANIFEST__;
 const MIRRORS = __DUET_OFFLINE_MIRRORS__;
 const BASE = PACK.basePath || '/';
-const CACHE = `duetblox-offline-${encodeURIComponent(BASE)}-${PACK.version}`;
+const CACHE_PREFIX = `duetblox-offline-${encodeURIComponent(BASE)}-`;
+const CACHE = `${CACHE_PREFIX}${PACK.version}`;
 const META = `${BASE}__duetblox_offline_state__`;
 // A malformed build must never store or intercept another application's paths.
 if (!BASE.startsWith('/') || !BASE.endsWith('/') || BASE.startsWith('//') || PACK.files.some(file => !file.url.startsWith(BASE) || !new URL(file.url, self.location.origin).pathname.startsWith(BASE) || new URL(file.url, self.location.origin).origin !== self.location.origin)) throw new Error('Offline pack escaped its application scope.');
@@ -11,37 +12,83 @@ let job = null;
 const state = async () => { const r=await (await caches.open(CACHE)).match(META); return r?await r.json():{ready:false,offline:false}; };
 const saveState = async data => (await caches.open(CACHE)).put(META,new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}}));
 const digest = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
-async function verifiedResponse(file,{repair=false}={}) {
+const cancelled = () => Object.assign(new Error('Offline preparation cancelled.'),{name:'AbortError'});
+const checkCancelled = signal => {if(signal?.aborted)throw cancelled();};
+const cleanResponse = (bytes,response) => {const headers=new Headers(response.headers);headers.delete('content-encoding');headers.delete('content-length');return new Response(bytes,{status:200,headers});};
+async function verifiedCachedResponse(file,response){
+ if(!response?.ok||response.type==='opaque')return null;
+ try{const bytes=await response.arrayBuffer();return bytes.byteLength===file.bytes&&await digest(bytes)===file.sha256?cleanResponse(bytes,response):null;}catch{return null;}
+}
+async function previousPackCaches(){
+ // CacheStorage is origin-wide. Only inspect older releases of this exact
+ // application mount; never enumerate their contents or alter their state.
+ return (await caches.keys()).filter(name=>name!==CACHE&&name.startsWith(CACHE_PREFIX)&&/^[a-f0-9]{20}$/.test(name.slice(CACHE_PREFIX.length))).reverse();
+}
+async function reusePrevious(file,names,signal){
+ for(const name of names){
+  checkCancelled(signal);
+  try{const response=await verifiedCachedResponse(file,await (await caches.open(name)).match(file.url));if(response)return response;}catch{}
+ }
+ return null;
+}
+function attemptSignal(parent){
+ const controller=new AbortController();
+ const timeout=typeof AbortSignal.timeout==='function'?AbortSignal.timeout(60000):null;
+ const expire=()=>controller.abort(Object.assign(new Error('Download deadline exceeded'),{name:'TimeoutError'}));
+ const timer=timeout?null:setTimeout(expire,60000);
+ const stop=()=>controller.abort(parent.reason);
+ const timedOut=()=>controller.abort(timeout.reason);
+ if(parent?.aborted)stop();else parent?.addEventListener('abort',stop,{once:true});
+ if(timeout?.aborted)timedOut();else timeout?.addEventListener('abort',timedOut,{once:true});
+ return {signal:controller.signal,close(){if(timer!==null)clearTimeout(timer);parent?.removeEventListener('abort',stop);timeout?.removeEventListener('abort',timedOut);}};
+}
+function retryDelay(delay,signal){
+ return new Promise((resolve,reject)=>{
+  checkCancelled(signal);
+  const stop=()=>{clearTimeout(timer);reject(cancelled());};
+  const timer=setTimeout(()=>{signal?.removeEventListener('abort',stop);resolve();},delay);
+  signal?.addEventListener('abort',stop,{once:true});
+ });
+}
+async function verifiedResponse(file,{repair=false,signal,previous,onAttempt}={}) {
+ checkCancelled(signal);
+ const reused=await reusePrevious(file,previous??await previousPackCaches(),signal);
+ checkCancelled(signal);
+ if(reused)return reused;
  const mirror=MIRRORS[file.url];
  const sources=[file.url];
  if(mirror&&mirror.bytes===file.bytes&&mirror.sha256===file.sha256)sources.push(mirror.url);
  let failure;
  for(const url of sources){
   for(let attempt=0;attempt<3;attempt++){
+   checkCancelled(signal);
    // Recheck before every attempt: offline mode may change during a backoff.
    // Only an explicit preparation/repair may bypass that network policy.
    if(!repair&&(await state()).offline)throw new Error('DUETBlox offline mode: this file is not saved.');
-   let retryable=false;
+   onAttempt?.({file:file.url,source:new URL(url,self.location.origin).host,attempt:attempt+1});
+   let retryable=false,transportFailure=false;
+   const deadline=attemptSignal(signal);
    try{
-    const timeout=typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function'?{signal:AbortSignal.timeout(60000)}:{};
     let response;
-    try{response=await fetch(url,{cache:'no-store',...timeout,...(url!==file.url?{mode:'cors',credentials:'omit',redirect:'error'}:{})});}
-    catch(error){retryable=true;throw error;}
+    try{response=await fetch(url,{cache:'no-store',signal:deadline.signal,...(url!==file.url?{mode:'cors',credentials:'omit',redirect:'error'}:{})});}
+    catch(error){retryable=true;transportFailure=true;throw error;}
     if(!response.ok||response.type==='opaque'){
      retryable=response.type!=='opaque'&&[408,429,500,502,503,504].includes(response.status);
      try{await response.body?.cancel();}catch{}
-     throw new Error(`Cannot save ${file.url} (HTTP ${response.status}).`);
+     throw new Error(`Cannot save ${file.url} from ${new URL(url,self.location.origin).host} (HTTP ${response.status}, attempt ${attempt+1}/3). Completed files are kept; retry preparation when the connection is available.`);
     }
     let bytes;
-    try{bytes=await response.arrayBuffer();}catch(error){retryable=['TypeError','AbortError','TimeoutError'].includes(error?.name);throw error;}
+    try{bytes=await response.arrayBuffer();}catch(error){retryable=['TypeError','AbortError','TimeoutError'].includes(error?.name);transportFailure=true;throw error;}
+    checkCancelled(signal);
     if(bytes.byteLength!==file.bytes||await digest(bytes)!==file.sha256)throw new Error(`Downloaded file failed verification: ${file.url}. Keep using the current app and try again after reloading.`);
-    const headers=new Headers(response.headers);headers.delete('content-encoding');headers.delete('content-length');
-    return new Response(bytes,{status:200,headers});
+    return cleanResponse(bytes,response);
    }catch(error){
-    failure=error;
+    checkCancelled(signal);
+    const timeout=error?.name==='TimeoutError'||deadline.signal.reason?.name==='TimeoutError';
+    failure=transportFailure?new Error(`${timeout?'Download timed out after 60 seconds':'Network download failed'}: ${file.url} from ${new URL(url,self.location.origin).host} (attempt ${attempt+1}/3). Completed files are kept; retry preparation when the connection is available.`):error;
     if(!retryable||attempt===2)break;
-    await new Promise(resolve=>setTimeout(resolve,attempt===0?250:750));
-   }
+    await retryDelay(attempt===0?250:750,signal);
+   }finally{deadline.close();}
   }
  }
  throw failure;
@@ -55,23 +102,34 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 async function prepare(port) {
  if(job){port.postMessage({type:'error',message:'Offline preparation is already running in another window.'});return;}
- const token={cancelled:false};job=token;
+ const token={cancelled:false,controller:new AbortController()};job=token;
  let completed=0,bytes=0;
  try{
   const cache=await caches.open(CACHE);
+  const previous=await previousPackCaches();
   await saveState({...(await state()),ready:false});
   const pending=[...PACK.files];
+  // Attempts may wait up to 60 seconds without a completed file. Report the
+  // unchanged verified totals so the client knows bounded work is still alive.
+  const progress=details=>port.postMessage({type:'progress',completed,total:PACK.files.length,bytes,totalBytes:PACK.bytes,...details});
   async function worker(){while(pending.length&&!token.cancelled){const file=pending.shift();let response=await cache.match(file.url);
    // An explicit repair checks existing bytes too, not just cache-key presence.
-   if(response){const content=await response.clone().arrayBuffer();if(content.byteLength!==file.bytes||await digest(content)!==file.sha256)response=null;}
-   if(!response){response=await verifiedResponse(file,{repair:true});if(token.cancelled)return;await cache.put(file.url,response);}
-   completed++;bytes+=file.bytes;port.postMessage({type:'progress',completed,total:PACK.files.length,bytes,totalBytes:PACK.bytes});
+   if(response)response=await verifiedCachedResponse(file,response);
+   if(!response){response=await verifiedResponse(file,{repair:true,signal:token.controller.signal,previous,onAttempt:progress});if(token.cancelled)return;await cache.put(file.url,response);}
+   if(token.cancelled)return;
+   completed++;bytes+=file.bytes;progress();
   }}
   await Promise.all(Array.from({length:6},worker));
   if(token.cancelled){port.postMessage({type:'cancelled'});return;}
-  await saveState({...(await state()),ready:true,version:PACK.version,completedAt:Date.now()});
-  port.postMessage({type:'complete',...(await state()),bytes:PACK.bytes,files:PACK.files.length});
- }catch(error){token.cancelled=true;port.postMessage({type:'error',message:error.message||'Offline preparation failed. Check available storage and try again.'});}
+  const beforeCompletion=await state();
+  if(token.cancelled){port.postMessage({type:'cancelled'});return;}
+  await saveState({...beforeCompletion,ready:true,version:PACK.version,completedAt:Date.now()});
+  const completedState=await state();
+  // CANCEL can arrive while CacheStorage commits the final metadata. Do not
+  // turn that cancelled operation into success or leave a ready marker behind.
+  if(token.cancelled){await saveState({...completedState,ready:false});port.postMessage({type:'cancelled'});return;}
+  port.postMessage({type:'complete',...completedState,bytes:PACK.bytes,files:PACK.files.length});
+ }catch(error){const wasCancelled=token.cancelled;token.cancelled=true;token.controller.abort();port.postMessage(wasCancelled?{type:'cancelled'}:{type:'error',message:error.message||'Offline preparation failed. Check available storage and try again.'});}
  finally{if(job===token)job=null;}
 }
 self.addEventListener('message',event=>{
@@ -89,7 +147,7 @@ self.addEventListener('message',event=>{
     port.postMessage({type:'activating',version:PACK.version});return;
    }
    if(event.data?.type==='PREPARE')return await prepare(port);
-   if(event.data?.type==='CANCEL'){if(job)job.cancelled=true;port.postMessage({type:'cancelled'});return;}
+   if(event.data?.type==='CANCEL'){if(job){job.cancelled=true;job.controller.abort();}port.postMessage({type:'cancelled'});return;}
    if(event.data?.type==='STATUS'){const saved=await state();let ready=saved.ready;
     if(ready){const keys=new Set((await (await caches.open(CACHE)).keys()).map(r=>r.url));ready=PACK.files.every(f=>keys.has(new URL(f.url,self.location.origin).href));if(!ready)await saveState({...saved,ready:false});}
     port.postMessage({type:'status',...saved,ready,offline:!!saved.offline,version:PACK.version,bytes:PACK.bytes,files:PACK.files.length,busy:!!job});return;
