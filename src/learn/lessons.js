@@ -14,7 +14,7 @@ const BASE_LESSONS = [
     needs: words('No camera, account, or board needed.', 'कैमरा, अकाउंट या बोर्ड की ज़रूरत नहीं।'),
     steps: [
       step('open', words('Meet your stage', 'अपने मंच को देखें'),
-        words('Open Junior Blocks. Use Play story to run the current story, then Stop story. If you want a fresh example, first Save project, then download the starter below and use Open story.', 'Junior Blocks खोलें। Play story से कहानी चलाएँ, फिर Stop story दबाएँ। नया उदाहरण चाहिए तो पहले Save project करें, फिर नीचे से starter डाउनलोड करके Open story से खोलें।'),
+        words('Open Junior Blocks. Use Play story to run the current story, then Stop story. For a fresh example, choose Open starter story in Learn. A recovery copy keeps your previous workspace safe.', 'Junior Blocks खोलें। Play story से कहानी चलाएँ, फिर Stop story दबाएँ। नए उदाहरण के लिए Learn में Open starter story चुनें। पिछले workspace की recovery copy रखी जाती है।'),
         words('I can start and stop the story.', 'मैं कहानी चला और रोक सकता/सकती हूँ।')),
       step('change', words('Give your character a voice', 'किरदार को अपनी आवाज़ दें'),
         words('Find a Say block in the script, or choose Looks → Say to add one. Change Words to say to your own greeting. Press Play story and watch the speech bubble.', 'स्क्रिप्ट में Say ब्लॉक ढूँढें, या Looks → Say से जोड़ें। Words to say में अपना अभिवादन लिखें। Play story दबाकर बोलने वाला बुलबुला देखें।'),

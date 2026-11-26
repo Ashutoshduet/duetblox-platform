@@ -8,7 +8,7 @@ import './companion.css';
 const names = {zuni: 'Zuni', duvi: 'Duvi', tiko: 'Tiko'};
 const danceNames = {surprise: 'Mix it up', bounce: 'Happy bounce', shuffle: 'Robot shuffle', spin: 'Little spin', 'high-five': 'High-five', victory: 'Victory pose'};
 
-export default function MascotCompanion({scope, suspended = false}) {
+export default function MascotCompanion({scope, suspended = false, showSettings = true}) {
   const {preferences, event, storageError} = useSyncExternalStore(celebrations.subscribe, celebrations.snapshot, celebrations.snapshot);
   const [preview, setPreview] = useState(null), [playing, setPlaying] = useState(false), [playKey, setPlayKey] = useState(0);
   const [systemReduce, setSystemReduce] = useState(() => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -60,7 +60,7 @@ export default function MascotCompanion({scope, suspended = false}) {
   };
   return <div className="mascot-companion" data-scope={scope}>
     {current && <CelebrationCard event={current} mascot={preferences.mascot} palette={preferences.palette} motionReduced={reduced} playing={playing} playKey={playKey} onReplay={replay} onSkip={()=>{if(playing)stop();else{stop();setPreview(null);celebrations.clear(scope);}}}/>}
-    <details className="mascot-settings">
+    {showSettings && <details className="mascot-settings">
       <summary><Sparkles size={17} aria-hidden="true"/>Mascot settings</summary>
       <div className="mascot-preferences">
         <p>Your coding buddy. Short celebrations, your way.</p>
@@ -76,6 +76,6 @@ export default function MascotCompanion({scope, suspended = false}) {
         {soundNotice && <p role="status">{soundNotice}</p>}
         {storageError && <p role="status">Your choices work for this visit, but this browser could not save them.</p>}
       </div>
-    </details>
+    </details>}
   </div>;
 }

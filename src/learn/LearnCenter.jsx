@@ -26,6 +26,8 @@ const send = action => {
 };
 const copy = (locale, en, hi, hg) => locale === 'hi' ? hi : locale === 'hg' ? (hg || en) : en;
 
+export const startLessonGuide = lessonId => send({type: 'start', lessonId});
+
 function useStorageSync() {
   useEffect(() => {
     const changed = event => {if (event.storageArea === storage && (event.key === PROGRESS_KEY || event.key === null)) store.refresh(event.key === null ? null : event.newValue);};
@@ -63,13 +65,13 @@ function LessonStep({lesson, progress, locale, onNavigate, compact = false}) {
     <div className="learn-step-controls"><button className="button secondary" disabled={status.index === 0} onClick={() => move(status.index - 1)}><ArrowLeft size={16}/>{copy(locale, 'Back', 'पीछे', 'Peeche')}</button>
       {status.index < status.total - 1 ? <button className="button secondary" onClick={() => move(status.index + 1)}>{copy(locale, 'Next step', 'अगला चरण', 'Agla step')}<ArrowRight size={16}/></button> : <span className="learn-final-step">{status.finished ? copy(locale, 'All steps checked', 'सभी चरण जाँचे गए', 'Saare steps check ho gaye') : copy(locale, 'Last step · check your work', 'आखिरी चरण · अपना काम जाँचें', 'Aakhri step · apna kaam check kariye')}</span>}
     </div>
-    <MascotCompanion scope={`lesson:${lesson.id}`}/>
+    <MascotCompanion scope={`lesson:${lesson.id}`} showSettings={!compact}/>
     {!compact && <button className="button primary learn-open" onClick={open}>{copy(locale, `Open ${pageLabels[lesson.target]}`, `${pageLabels[lesson.target]} खोलें`, `${pageLabels[lesson.target]} kholiye`)}<ArrowRight size={17}/></button>}
     {notice && <p className="learn-notice" role="status">{notice}</p>}
   </section>;
 }
 
-export default function LearnCenter({onNavigate}) {
+export default function LearnCenter({onNavigate, onStartStarter, busy = false}) {
   useStorageSync();
   const {progress, storageError} = useProgress(), {locale} = progress;
   const lesson = lessonById(progress.selected) || LESSONS[0], status = lessonProgress(progress, lesson.id);
@@ -96,7 +98,7 @@ export default function LearnCenter({onNavigate}) {
         <div className="learn-detail-heading"><span className={`learn-icon ${lesson.tone}`}>{React.createElement(icons[lesson.icon], {size: 25})}</span><div><h2>{translate(lesson.title, locale)}</h2><p>{translate(lesson.needs, locale)}</p></div></div>
         <ol className="learn-step-list" aria-label={copy(locale, 'Lesson steps', 'Lesson के चरण', 'Lesson ke steps')}>{lesson.steps.map((item, index) => <li key={item.id}><button aria-current={status.index === index ? 'step' : undefined} onClick={() => send({type: 'step', lessonId: lesson.id, index})}><span>{progress.completed[lesson.id]?.includes(item.id) ? <Check size={13}/> : index + 1}</span>{translate(item.title, locale)}</button></li>)}</ol>
         <LessonStep key={lesson.id} lesson={lesson} progress={progress} locale={locale} onNavigate={onNavigate}/>
-        {lesson.starter && <div className="learn-starter"><button className="text-button" onClick={download}><Download size={16}/>{copy(locale, 'Download starter file', 'Starter फ़ाइल डाउनलोड करें', 'Starter file download kariye')}</button><p>{copy(locale, lesson.starter === 'junior' ? 'Open in Junior Blocks → Open story. Save your current story first.' : 'Open in Text learning → Open dataset. Save your current examples first.', lesson.starter === 'junior' ? 'Junior Blocks → Open story से खोलें। पहले मौजूदा कहानी सेव करें।' : 'Text learning → Open dataset से खोलें। पहले मौजूदा examples सेव करें।', lesson.starter === 'junior' ? 'Junior Blocks → Open story se kholiye. Pehle abhi ki kahani save kariye.' : 'Text learning → Open dataset se kholiye. Pehle abhi ke examples save kariye.')}</p></div>}
+        {lesson.starter && <div className="learn-starter"><div className="starter-actions">{lesson.starter === 'junior' && onStartStarter && <button className="button primary" disabled={busy} onClick={onStartStarter}>{copy(locale, 'Open starter story', 'Starter कहानी खोलें', 'Starter kahani kholiye')}</button>}<button className="text-button" onClick={download}><Download size={16}/>{copy(locale, 'Download starter file', 'Starter फ़ाइल डाउनलोड करें', 'Starter file download kariye')}</button></div><p>{copy(locale, lesson.starter === 'junior' ? 'Open starter story keeps a recovery copy of your current workspace first. You can also download the starter file.' : 'Open in Text learning → Open dataset. Save your current examples first.', lesson.starter === 'junior' ? 'Open starter story पहले आपके workspace की recovery copy रखता है। आप starter फ़ाइल डाउनलोड भी कर सकते हैं।' : 'Text learning → Open dataset से खोलें। पहले मौजूदा examples सेव करें।', lesson.starter === 'junior' ? 'Open starter story pehle aapke workspace ki recovery copy rakhta hai. Starter file download bhi kar sakte hain.' : 'Text learning → Open dataset se kholiye. Pehle abhi ke examples save kariye.')}</p></div>}
         {lesson.link && <a className="button secondary learn-link" href={lesson.link.href} target="_blank" rel="noopener">{translate(lesson.link.label, locale)}<ArrowUpRight size={16}/></a>}
         {notice && <p className="learn-notice" role="status">{notice}</p>}
         <div className="learn-reset">{resetting ? <><p>{copy(locale, 'Reset the checkmarks and step position for this lesson? Your projects and models stay as they are.', 'इस lesson के checkmarks और चरण की स्थिति reset करें? आपके projects और models वैसे ही रहेंगे।', 'Is lesson ke checkmarks aur step reset karein? Aapke projects aur models waise hi rahenge.')}</p><button className="small-button" onClick={() => {send({type: 'reset', lessonId: lesson.id}); setResetting(false);}}>{copy(locale, 'Reset this progress', 'यह प्रगति reset करें', 'Ye progress reset kariye')}</button><button className="text-button" onClick={() => setResetting(false)}>{copy(locale, 'Keep progress', 'प्रगति रखें', 'Progress rakhiye')}</button></> : <button className="text-button" onClick={() => setResetting(true)}>{copy(locale, 'Reset this lesson’s progress', 'इस lesson की प्रगति reset करें', 'Is lesson ki progress reset kariye')}</button>}</div>
