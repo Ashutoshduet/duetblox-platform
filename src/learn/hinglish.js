@@ -6,7 +6,7 @@ export const HINGLISH = {
     summary: 'Character ko chalaiye, bulwaiye, aur ek baar mein ek hi cheez badliye.',
     needs: 'Camera, account ya board ki zaroorat nahi.',
     steps: {
-      open: {title: 'Apna stage dekhiye', body: 'Junior Blocks kholiye. Play story se kahani chalaiye, phir Stop story dabaiye. Naya example chahiye to pehle Save project kariye, phir neeche se starter download karke Open story se kholiye.', check: 'Main kahani chala aur rok sakta/sakti hoon.'},
+      open: {title: 'Apna stage dekhiye', body: 'Junior Blocks kholiye. Play story se kahani chalaiye, phir Stop story dabaiye. Naya example chahiye to Open starter story chuniye. Aapke purane workspace ki recovery copy pehle save hoti hai.', check: 'Main kahani chala aur rok sakta/sakti hoon.'},
       change: {title: 'Character ko apni awaaz dijiye', body: 'Script mein Say block dhoondhiye, ya Looks → Say se jodiye. Words to say mein apna greeting likhiye. Play story dabaiye aur speech bubble dekhiye.', check: 'Mera character mera greeting bolta hai.', hint: 'Blocks left se right chalte hain. Chhote arrow buttons se block aage ya peeche kariye.'},
       experiment: {title: 'Pehle andaaza, phir try', body: 'Motion → Go right chuniye. Number 1 se 3 kariye. Andaaza lagaiye character kitna chalega, phir play kariye. Ek square 20 pixels ka hai. Compare karne se pehle Reset starting positions dabaiye.', check: 'Maine number badla aur result compare kiya.'},
       save: {title: 'Kahani sambhaliye', body: 'Sirf Junior kahani ke liye Save story, ya poore DUETBlox workspace ke liye Save project kariye. Downloaded file aisi jagah rakhiye jahan baad mein mil jaaye.', check: 'Maine apne computer par ek copy save ki.'}

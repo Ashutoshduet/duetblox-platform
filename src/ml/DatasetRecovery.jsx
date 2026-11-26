@@ -7,9 +7,9 @@ import './dataset-recovery.css';
 export function useDatasetRecovery(kind,service,onError) {
   const [snapshot,setSnapshot]=useState(null),revision=useRef(0),mounted=useRef(false);
   useEffect(()=>{
-    mounted.current=true;const version=revision.current;
-    readRecord(datasetRecoveryKey(kind)).then(saved=>{if(mounted.current&&revision.current===version&&saved?.version===1)setSnapshot(saved);}).catch(error=>onError?.(`Could not open dataset recovery: ${error.message}`));
-    const reset=()=>{revision.current++;setSnapshot(null);};
+    mounted.current=true;
+    const reset=()=>{const version=++revision.current;setSnapshot(null);readRecord(datasetRecoveryKey(kind)).then(saved=>{if(mounted.current&&revision.current===version)setSnapshot(saved?.version===1?saved:null);}).catch(error=>{if(mounted.current&&revision.current===version)onError?.(`Could not open dataset recovery: ${error.message}`);});};
+    reset();
     const event=kind==='image'?'duetblox:dataset-import':`duetblox:${kind}-dataset-import`;
     window.addEventListener(event,reset);
     return()=>{mounted.current=false;revision.current++;window.removeEventListener(event,reset);};

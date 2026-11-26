@@ -19,6 +19,12 @@ math_number math_positive_number math_whole_number math_integer math_angle text 
 motion_goto_menu motion_pointtowards_menu looks_costume sensing_touchingobjectmenu sensing_distancetomenu sensing_keyoptions sensing_of_object
 `.trim().split(/\s+/));
 
+const breakpointOpcodes = new Set([...allowed].filter(opcode =>
+  /^(motion_|looks_|control_|data_)/.test(opcode) && !new Set(['motion_xposition','motion_yposition','motion_direction','motion_goto_menu','motion_pointtowards_menu','looks_costumenumbername','looks_size','looks_costume','data_variable','data_itemoflist','data_itemnumoflist','data_lengthoflist','data_listcontainsitem','data_listcontents']).has(opcode)
+));
+breakpointOpcodes.add('procedures_call');
+export const BREAKPOINT_STEP_LIMIT = 100;
+
 export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks = () => {}} = {}) {
   const runtime = vm.runtime;
   if (vmPackage.version !== '15.2.0' || typeof runtime._step !== 'function' || !runtime.sequencer?.stepToBranch) {
@@ -31,7 +37,7 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
   const alive = thread => !thread.isKilled && thread.stack.length && thread.status !== Thread.STATUS_DONE;
   const description = thread => {
     const blockId = thread?.peekStack();
-    return blockId ? {targetName: thread.target.getName(), blockId, opcode: thread.target.blocks.getBlock(blockId)?.opcode} : null;
+    return blockId ? {targetId: thread.target.id, targetName: thread.target.getName(), blockId, opcode: thread.target.blocks.getBlock(blockId)?.opcode} : null;
   };
   const nextThread = () => {
     for (let i = 0; i < ordered.length; i++) {
@@ -79,10 +85,11 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
   runtime._step = gatedStep;
 
   function check() {
-    const issues = []; let greenFlags = 0;
+    const issues = [], breakpoints = []; let greenFlags = 0;
     for (const target of runtime.targets.filter(t => t.isOriginal)) {
       for (const block of Object.values(target.blocks._blocks)) {
         if (block.opcode === 'event_whenflagclicked') greenFlags++;
+        if (!block.shadow && breakpointOpcodes.has(block.opcode) && breakpoints.length < 500) breakpoints.push({targetId: target.id, targetName: target.getName(), blockId: block.id, opcode: block.opcode});
         let message;
         if (!allowed.has(block.opcode)) message = 'Use normal Run for this block. Learning steps only support synchronous core blocks and green-flag scripts.';
         if (block.opcode === 'procedures_prototype' && [true, 'true'].includes(block.mutation?.warp)) message = 'Turn off “Run without screen refresh” for this My Block before using Learning steps.';
@@ -90,7 +97,7 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
       }
     }
     if (!greenFlags) issues.push({targetName: '', blockId: null, opcode: null, message: 'Add a “when green flag clicked” script to start Learning steps.'});
-    return {ok: issues.length === 0, issues: issues.slice(0, 50), totalIssues: issues.length, supported: LEARNING_SCOPE, revision};
+    return {ok: issues.length === 0, issues: issues.slice(0, 50), totalIssues: issues.length, supported: LEARNING_SCOPE, revision, breakpoints};
   }
   function leave(nextStatus, message = null) {
     active = false; status = nextStatus; reason = message; clearGlow(); ordered = []; cursor = 0;
@@ -122,7 +129,7 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
       return publish();
     } finally {starting = false;}
   }
-  function step() {
+  function step(notify = true) {
     if (!active) throw new Error('Start Learning steps before stepping this program.');
     if (runtime.threads.some(t => !t.updateMonitor && alive(t) && !ordered.includes(t))) {
       return stop('A script was started outside Learning steps. Start Learning steps again.');
@@ -131,7 +138,7 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
     if (!entry) return leave('completed');
     const {thread, index} = entry;
     if (thread.stack.length > 256) return stop('This My Block has too many nested calls. Check recursion before restarting.');
-    last = description(thread);
+    last = description(thread); reason = null;
     stepping = true;
     try {
       runtime.sequencer.activeThread = thread;
@@ -139,15 +146,33 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
       stepCount++;
       runtime.threads = runtime.threads.filter(alive);
       if (active) cursor = (index + 1) % ordered.length;
-      render();
-      if (!active) return publish(); // A “stop all” block ended the session.
+      if (notify) render();
+      if (!active) return notify ? publish() : snapshot(); // A “stop all” block ended the session.
       if (!nextThread()) return leave('completed');
-      highlight(nextThread().thread);
-      return publish();
+      if (notify) highlight(nextThread().thread);
+      return notify ? publish() : snapshot();
     } catch (error) {
       stop(`Learning steps stopped: ${error.message}`);
       throw error;
     } finally {runtime.sequencer.activeThread = null; stepping = false;}
+  }
+  function runUntil({targetId, blockId, expectedRevision} = {}) {
+    if (!active) throw new Error('Start Learning steps before using a breakpoint.');
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision !== revision) throw new Error('The program or execution changed. Start Learning steps again.');
+    if (typeof targetId !== 'string' || typeof blockId !== 'string') throw new Error('Choose a current command block as a breakpoint.');
+    const target = runtime.targets.find(item => item.isOriginal && item.id === targetId);
+    const block = target?.blocks.getBlock(blockId);
+    if (!block || block.shadow || !breakpointOpcodes.has(block.opcode)) throw new Error('Choose a current command block as a breakpoint.');
+    const matches = () => {const next = nextThread()?.thread; return next?.target === target && next.peekStack() === blockId;};
+    let executed = 0;
+    clearGlow();
+    while (active && !matches() && executed < BREAKPOINT_STEP_LIMIT) {step(false); executed++;}
+    if (active) {
+      reason = matches() ? 'Paused before your breakpoint. Next step executes that command.' : `Paused after ${BREAKPOINT_STEP_LIMIT} steps without reaching the breakpoint. Check your conditions or loop, or continue to the breakpoint again.`;
+      highlight(nextThread()?.thread);
+    }
+    render();
+    return publish();
   }
   function resume() {
     if (!active) throw new Error('There is no paused Learning steps program to resume.');
@@ -176,7 +201,7 @@ export function createExecutionControls(vm, {onChange = () => {}, onShowBlocks =
     runtime.removeListener('PROJECT_CHANGED', onEdit);
     clearGlow();
   }
-  return {check, start, step, resume, stop, snapshot, dispose};
+  return {check, start, step, runUntil, resume, stop, snapshot, dispose};
 }
 
 // Stack progression follows pinned Sequencer.stepThread, but deliberately

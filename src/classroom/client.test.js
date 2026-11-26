@@ -17,3 +17,34 @@ test('a mounted app keeps classroom requests on the teacher-supplied server orig
   service.disconnect();
  }finally{if(original)Object.defineProperty(globalThis,'location',original);else delete globalThis.location;}
 });
+
+test('submission receipts are scoped to the exact connected room and never leak to another server',async()=>{
+ const calls=[],id='12345678-1234-1234-1234-123456789abc',receiptKey='R'.repeat(43);
+ const service=new ClassroomService({fetchImpl:async(url,options)=>{calls.push({url,options});return json(url.endsWith('/session')?{room:'classroom',role:'student'}:url.endsWith('/submissions')?{submission:{id,name:'Story.sb3'},receiptKey}:{id,review:null});}});
+ await service.connect({url:'http://127.0.0.1:5191',room:'classroom',key});
+ const result=await service.submitAssignment(new File(['zip'],'Story.sb3'),id,'Blue Fox');assert.equal(result.receipt.kind,'duetblox-submission-receipt');assert.equal(result.receipt.key,receiptKey);
+ await service.getSubmission(id,result.receipt);assert.equal(calls.at(-1).options.headers['X-Submission-Key'],receiptKey);
+ const count=calls.length;assert.throws(()=>service.getSubmission(id,{...result.receipt,url:'https://another.example'}),/has not been sent/);assert.throws(()=>service.downloadSubmission(id,{...result.receipt,room:'other'}),/has not been sent/);assert.equal(calls.length,count);
+ assert.equal(JSON.stringify(service.getState()).includes(receiptKey),false);assert.equal(JSON.stringify(service.getState()).includes(key),false);
+ service.disconnect();assert.throws(()=>service.validateReceipt(result.receipt),/has not been sent/);
+});
+
+test('assignment requests use explicit API paths and review is sent as JSON',async()=>{
+ const calls=[],id='12345678-1234-1234-1234-123456789abc';const service=new ClassroomService({fetchImpl:async(url,options)=>{calls.push({url,options});return json(url.endsWith('/session')?{room:'classroom',role:'teacher'}:url.endsWith('/assignments')?{assignments:[]}:url.endsWith('/submissions')?{submissions:[]}:{id});}});
+ await service.connect({url:'http://127.0.0.1:5191',room:'classroom',key});assert.deepEqual(await service.listAssignments(),[]);assert.deepEqual(await service.listSubmissions(),[]);
+ await service.saveAssignment({title:'Story',instructions:'Try it.'},id);assert.match(calls.at(-1).url,new RegExp('/assignments/'+id+'$'));
+ await service.reviewSubmission(id,{status:'complete',feedback:'You explained the change.'});assert.equal(calls.at(-1).options.method,'POST');assert.equal(JSON.parse(calls.at(-1).options.body).status,'complete');assert.match(calls.at(-1).url,/\/review$/);
+ assert.throws(()=>service.submitAssignment(new File(['x'],'bad.html'),id,'Fox'),/Choose a/);
+ assert.throws(()=>service.validateReceipt({kind:'duetblox-submission-receipt',version:1,id,key:'bad'}),/valid/);
+});
+
+test('session receipt history survives panel navigation and is erased on disconnect',async()=>{
+ const id='12345678-1234-1234-1234-123456789abc',other='12345678-1234-1234-1234-123456789abd',receiptKey='R'.repeat(43);
+ const service=new ClassroomService({fetchImpl:async()=>json({room:'classroom',role:'student'})});await service.connect({url:'http://127.0.0.1:5191',room:'classroom',key});
+ const receipt={kind:'duetblox-submission-receipt',version:1,url:'http://127.0.0.1:5191',room:'classroom',id,key:receiptKey};
+ service.rememberSubmissionReceipt(receipt,'First.sb3');service.rememberSubmissionReceipt({...receipt,id:other,key:'Q'.repeat(43)},'Revision.sb3');
+ const history=service.getSubmissionReceipts();assert.equal(history.length,2);assert.equal(history[0].receipt.id,id);history[0].receipt.key='modified';assert.equal(service.getSubmissionReceipts()[0].receipt.key,receiptKey);
+ assert.equal(JSON.stringify(service.getState()).includes(receiptKey),false);
+ assert.throws(()=>service.rememberSubmissionReceipt({...receipt,url:'https://other.example'}),/has not been sent/);assert.equal(service.getSubmissionReceipts().length,2);
+ service.disconnect();assert.deepEqual(service.getSubmissionReceipts(),[]);
+});

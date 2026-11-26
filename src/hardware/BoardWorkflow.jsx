@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {Plug, Unplug, Code2, Download} from 'lucide-react';
 import './board-workflow.css';
+import BoardAcceptance from './BoardAcceptance.jsx';
 
 export default function BoardWorkflow({board, boards, mode, onMode, busy, connectionPending, state, canConnect,
   onSelect, onPrepare, onUseBlocks, onCompile, canCompile, onConnect, onDisconnect, onCancelConnection,
@@ -35,6 +36,7 @@ export default function BoardWorkflow({board, boards, mode, onMode, busy, connec
       </ol>}
       {mode === 'standalone' && <div id="hardware-compiler-setup" hidden={!compilerOpen}>{compilerPanel}</div>}
       {firmwarePanel}
+      <BoardAcceptance key={`${board.id}:${mode}`} board={board} mode={mode}/>
       <p className="hardware-workflow-note">Physical board testing is still pending. Image, sound and pose models run in the browser; only supported hardware blocks and small numbers models can run on a disconnected board.</p>
     </>}
   </section>;

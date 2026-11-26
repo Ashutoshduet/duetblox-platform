@@ -315,3 +315,66 @@ test('execution revision fences reject stale starts and stale learning cleanup c
   } finally {await page.close();}
 });
 
+
+test('breakpoint runs stop before the selected command and reject reporters, stale revisions and unknown targets', {timeout: 90000}, async () => {
+  const {page, errors} = await open();
+  try {
+    const {project, sprite} = await fixture(page);
+    sprite.blocks = {
+      flag: block('event_whenflagclicked', 'set', null),
+      set: block('data_setvariableto', 'move', 'flag', {VALUE: input('sum')}, {VARIABLE: field}),
+      sum: block('operator_add', null, 'set', {NUM1: num(2), NUM2: num(3)}),
+      move: block('motion_changexby', 'increment', 'set', {DX: num(10)}),
+      increment: block('data_changevariableby', null, 'move', {VALUE: num(2)}, {VARIABLE: field})
+    };
+    await command(page, 'loadProject', {project});
+    const checked = await command(page, 'learningCheck');
+    assert.deepEqual(checked.breakpoints.map(item => item.blockId).sort(), ['increment','move','set']);
+    const selected = checked.breakpoints.find(item => item.blockId === 'increment');
+    const start = await command(page, 'learningStart');
+    for (const invalid of [
+      {...selected, expectedRevision: checked.revision},
+      {...selected, expectedRevision: String(start.revision)},
+      {...selected, targetId: '__proto__', expectedRevision: start.revision},
+      {...selected, blockId: 'sum', expectedRevision: start.revision},
+      {...selected, blockId: 'missing', expectedRevision: start.revision},
+      {...selected, blockId: {}, expectedRevision: start.revision}
+    ]) await assert.rejects(command(page, 'learningRunUntil', invalid), /changed|Choose a current command/);
+    assert.equal(await valueOf(page), '0', 'Invalid requests cannot advance execution');
+    let state = await command(page, 'learningRunUntil', {...selected, expectedRevision: start.revision});
+    assert.equal(state.status, 'paused'); assert.equal(state.next.blockId, 'increment'); assert.equal(state.stepCount, 2);
+    assert.match(state.reason, /Paused before/); assert.equal(await valueOf(page), '5');
+    assert.equal((await command(page, 'status')).targets.find(item => item.name === 'Learner').x, 10);
+    await page.waitForTimeout(150); assert.equal(await valueOf(page), '5', 'Automatic ticks remain held at the breakpoint');
+    state = await command(page, 'learningRunUntil', {...selected, expectedRevision: state.revision});
+    assert.equal(state.stepCount, 2, 'A breakpoint at the current command does not execute it');
+    state = await command(page, 'learningStep'); assert.equal(state.status, 'completed'); assert.equal(await valueOf(page), '7');
+    await assert.rejects(command(page, 'learningRunUntil', {...selected, expectedRevision: start.revision}), /Start Learning steps/);
+    assert.deepEqual(errors, []);
+  } finally {await page.close();}
+});
+
+test('unreachable breakpoints stop after 100 steps and remain stoppable; completion and stop-all are honored', {timeout: 90000}, async () => {
+  const {page, errors} = await open();
+  try {
+    const {project, sprite} = await fixture(page);
+    sprite.blocks = {flag:block('event_whenflagclicked','loop',null),loop:block('control_forever',null,'flag',{SUBSTACK:input('add')}),add:block('data_changevariableby',null,'loop',{VALUE:num(1)},{VARIABLE:field}),unused:block('motion_movesteps',null,null,{STEPS:num(10)})};
+    await command(page,'loadProject',{project});
+    const chosen=(await command(page,'learningCheck')).breakpoints.find(item=>item.blockId==='unused');
+    const start=await command(page,'learningStart');
+    const state=await command(page,'learningRunUntil',{...chosen,expectedRevision:start.revision});
+    assert.equal(state.active,true);assert.equal(state.status,'paused');assert.equal(state.stepCount,100);
+    assert.match(state.reason,/100 steps without reaching/);assert.equal(await valueOf(page),'50');
+    await command(page,'stopAll');assert.equal((await command(page,'learningStatus')).active,false);
+    await page.waitForTimeout(150);assert.equal(await valueOf(page),'50');
+    for (const stop of [false,true]) {
+      sprite.blocks={flag:block('event_whenflagclicked','first',null),first:stop?block('control_stop',null,'flag',{}, {STOP_OPTION:['all',null]}):block('data_changevariableby',null,'flag',{VALUE:num(1)},{VARIABLE:field}),unused:block('motion_movesteps',null,null,{STEPS:num(10)})};
+      await command(page,'loadProject',{project});
+      const selected=(await command(page,'learningCheck')).breakpoints.find(item=>item.blockId==='unused');
+      const started=await command(page,'learningStart');
+      const finished=await command(page,'learningRunUntil',{...selected,expectedRevision:started.revision});
+      assert.equal(finished.active,false);assert.equal(finished.status,stop?'stopped':'completed');assert.equal(await valueOf(page),stop?'0':'1');
+    }
+    assert.deepEqual(errors,[]);
+  } finally {await page.close();}
+});

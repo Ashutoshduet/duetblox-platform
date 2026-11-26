@@ -7,6 +7,9 @@ import {fileURLToPath} from 'node:url';
 import {MAX_UPLOAD,validateProjectArchive} from './archive.mjs';
 const slug=/^[a-z0-9][a-z0-9-]{0,47}$/;
 const variable=/^[A-Za-z][A-Za-z0-9 _-]{0,47}$/;
+const identity=/^[0-9a-f-]{36}$/;
+const digest=value=>createHash('sha256').update(value).digest('hex');
+const visibleSubmission=({receiptHash,...item})=>item;
 const problem=(status,message)=>Object.assign(new Error(message),{status});
 const equal=(a,b)=>{const x=Buffer.from(a||''),y=Buffer.from(b||'');return x.length===y.length&&timingSafeEqual(x,y);};
 const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
@@ -17,9 +20,10 @@ export async function createClassroomServer({dataDir,rooms,distDir,origins=[],pu
  for(const [name,keys] of Object.entries(rooms)){if(!slug.test(name)||!keys||typeof keys.teacher!=='string'||typeof keys.student!=='string'||keys.teacher.length<32||keys.student.length<32||keys.teacher===keys.student)throw Error('Each room needs a valid name and separate teacher/student keys of at least 32 characters.');}
  const originsSet=new Set([...origins,...publicOrigins]);for(const origin of originsSet){const u=new URL(origin);if(!['http:','https:'].includes(u.protocol)||u.origin!==origin||u.username||u.password)throw Error('Origins must be exact HTTP(S) origins.');}
  await mkdir(dataDir,{recursive:true,mode:0o700});const root=distDir?await realpath(distDir):null;
+ let appBase='/';if(root){try{const manifest=JSON.parse(await readFile(path.join(root,'offline-manifest.json'),'utf8'));if(typeof manifest.basePath!=='string'||!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(manifest.basePath))throw Error('Invalid app base path in offline manifest.');appBase=manifest.basePath;}catch(e){if(e.code!=='ENOENT')throw e;}}
  let queue=Promise.resolve(),uploads=0;const rates=new Map();const mutate=fn=>{const result=queue.then(fn);queue=result.catch(()=>{});return result;};
  const dataPath=room=>path.join(dataDir,room,'index.json');
- const read=async room=>{try{const x=JSON.parse(await readFile(dataPath(room),'utf8'));if(!Array.isArray(x.projects)||!x.variables||typeof x.variables!=='object')throw Error('Invalid saved room');return x;}catch(e){if(e.code==='ENOENT')return {projects:[],variables:{},revision:0};throw e;}};
+ const read=async room=>{try{const x=JSON.parse(await readFile(dataPath(room),'utf8'));if(!Array.isArray(x.projects)||!x.variables||typeof x.variables!=='object')throw Error('Invalid saved room');x.assignments??=[];x.submissions??=[];if(!Array.isArray(x.assignments)||!Array.isArray(x.submissions))throw Error('Invalid saved assignments');return x;}catch(e){if(e.code==='ENOENT')return {projects:[],variables:{},revision:0,assignments:[],submissions:[]};throw e;}};
  const save=async(room,x)=>{const folder=path.join(dataDir,room);await mkdir(folder,{recursive:true,mode:0o700});const tmp=path.join(folder,`.${randomUUID()}.tmp`);await writeFile(tmp,JSON.stringify(x),{mode:0o600});await rename(tmp,dataPath(room));};
  const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
@@ -29,18 +33,21 @@ export async function createClassroomServer({dataDir,rooms,distDir,origins=[],pu
    const same=`http://${host}`,origin=req.headers.origin;
    if(origin&&(origin==='null'||!(origin===same||originsSet.has(origin))))throw problem(403,'Origin is not allowed.');
    if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
-   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, DELETE, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type, X-Project-Name','Access-Control-Max-Age':'300'});res.end();return;}
+   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, DELETE, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type, X-Project-Name, X-Assignment-Id, X-Student-Name, X-Submission-Key','Access-Control-Max-Age':'300'});res.end();return;}
    let url;try{url=new URL(req.url,same);}catch{throw problem(400,'Invalid URL.');}
    const raw=req.url.split('?')[0];let decoded;try{decoded=decodeURIComponent(raw);}catch{throw problem(400,'Invalid URL encoding.');}
    if(decoded.includes('\\')||decoded.split('/').some(p=>p==='..'||p==='.')||decoded.includes('\0'))throw problem(400,'Unsafe path.');
    if(!url.pathname.startsWith('/api/classroom/')){
     if(!root||!['GET','HEAD'].includes(req.method))throw problem(404,'Not found.');
+    if(appBase!=='/'&&decoded==='/'){res.writeHead(307,{'Location':appBase,'Cache-Control':'no-store'});res.end();return;}
+    if(appBase!=='/'&&!decoded.startsWith(appBase))throw problem(404,'Not found.');
     if(decoded.split('/').some(p=>p.startsWith('.')))throw problem(404,'Not found.');
-    let file=path.resolve(root,'.'+decoded);if(file!==root&&!file.startsWith(root+path.sep))throw problem(404,'Not found.');
+    const appPath=appBase==='/'?decoded:'/'+decoded.slice(appBase.length);
+    let file=path.resolve(root,'.'+appPath);if(file!==root&&!file.startsWith(root+path.sep))throw problem(404,'Not found.');
     try{let info=await stat(file);if(info.isDirectory())file=path.join(file,'index.html');file=await realpath(file);info=await stat(file);if(!file.startsWith(root+path.sep)||!info.isFile())throw Error();res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Content-Length':info.size,'Cache-Control':'no-store'});if(req.method==='HEAD')res.end();else createReadStream(file).on('error',()=>res.destroy()).pipe(res);return;}catch{throw problem(404,'Not found.');}
    }
-   const match=url.pathname.match(/^\/api\/classroom\/rooms\/([a-z0-9][a-z0-9-]{0,47})\/(session|projects|variables)(?:\/([^/]+))?$/);
-   if(!match)throw problem(404,'Not found.');const [,room,resource,rawId]=match;const keys=rooms[room],token=req.headers.authorization?.startsWith('Bearer ')?req.headers.authorization.slice(7):'';
+   const match=url.pathname.match(/^\/api\/classroom\/rooms\/([a-z0-9][a-z0-9-]{0,47})\/(session|projects|variables|assignments|submissions)(?:\/([^/]+))?(?:\/(file|review))?$/);
+   if(!match)throw problem(404,'Not found.');const [,room,resource,rawId,action]=match;if(action&&resource!=='submissions')throw problem(404,'Not found.');const keys=rooms[room],token=req.headers.authorization?.startsWith('Bearer ')?req.headers.authorization.slice(7):'';
    const role=keys&&equal(token,keys.teacher)?'teacher':keys&&equal(token,keys.student)?'student':null;if(!role)throw problem(401,'Room or access key is incorrect.');
    const rateKey=room+':'+role,now=Date.now();let rate=rates.get(rateKey);if(!rate||now-rate.start>=10000){rate={start:now,count:0};rates.set(rateKey,rate);}if(++rate.count>300)throw problem(429,'This room is sending requests too quickly. Wait a few seconds.');
    if(resource==='session'&&req.method==='GET'&&!rawId){json(res,200,{room,role,maxUploadBytes:MAX_UPLOAD,projectLimit:100,variableLimit:100});return;}
@@ -49,12 +56,44 @@ export async function createClassroomServer({dataDir,rooms,distDir,origins=[],pu
     if(req.method==='POST'&&!rawId){
      if(uploads>=2)throw problem(429,'Another upload is in progress. Try again shortly.');uploads++;
      try{let name;try{name=decodeURIComponent(req.headers['x-project-name']||'');}catch{throw problem(400,'Invalid project name.');}const bytes=await body(req,MAX_UPLOAD);validateProjectArchive(bytes,name);
-      const result=await mutate(async()=>{const x=await read(room);if(x.projects.length>=100||x.projects.reduce((n,p)=>n+p.bytes,0)+bytes.length>512*1024*1024)throw problem(409,'Room storage limit reached. Ask the teacher to remove a project.');const item={id:randomUUID(),name,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),createdAt:new Date().toISOString()};await mkdir(path.join(dataDir,room),{recursive:true,mode:0o700});await writeFile(path.join(dataDir,room,item.id+'.bin'),bytes,{flag:'wx',mode:0o600});try{x.projects.unshift(item);await save(room,x);}catch(e){await rm(path.join(dataDir,room,item.id+'.bin'),{force:true});throw e;}return item;});json(res,201,result);return;
+      const result=await mutate(async()=>{const x=await read(room);if(x.projects.length>=100||[...x.projects,...x.submissions].reduce((n,p)=>n+p.bytes,0)+bytes.length>512*1024*1024)throw problem(409,'Room storage limit reached. Ask the teacher to remove a project.');const item={id:randomUUID(),name,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),createdAt:new Date().toISOString()};await mkdir(path.join(dataDir,room),{recursive:true,mode:0o700});await writeFile(path.join(dataDir,room,item.id+'.bin'),bytes,{flag:'wx',mode:0o600});try{x.projects.unshift(item);await save(room,x);}catch(e){await rm(path.join(dataDir,room,item.id+'.bin'),{force:true});throw e;}return item;});json(res,201,result);return;
      }finally{uploads--;}
     }
     if(rawId&&/^[0-9a-f-]{36}$/.test(rawId)){
      if(req.method==='GET'){const item=(await read(room)).projects.find(p=>p.id===rawId);if(!item)throw problem(404,'Project not found.');const file=path.join(dataDir,room,rawId+'.bin');res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':item.bytes,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(item.name)}`,'Cache-Control':'no-store'});createReadStream(file).on('error',()=>res.destroy()).pipe(res);return;}
      if(req.method==='DELETE'){if(role!=='teacher')throw problem(403,'Only the teacher can remove shared projects.');await mutate(async()=>{const x=await read(room);if(!x.projects.some(p=>p.id===rawId))throw problem(404,'Project not found.');x.projects=x.projects.filter(p=>p.id!==rawId);await save(room,x);await rm(path.join(dataDir,room,rawId+'.bin'),{force:true});});json(res,200,{deleted:true});return;}
+    }
+   }
+   if(resource==='assignments'){
+    if(req.method==='GET'&&!rawId){json(res,200,{assignments:(await read(room)).assignments});return;}
+    if(req.method==='POST'&&(!rawId||identity.test(rawId))){
+     if(role!=='teacher')throw problem(403,'Only the teacher can create or edit assignments.');
+     let payload;try{payload=JSON.parse((await body(req,16000)).toString('utf8'));}catch(e){if(e.status)throw e;throw problem(400,'Expected assignment details.');}
+     const {title,instructions,closed=false}=payload||{};
+     if(typeof title!=='string'||!title.trim()||title.length>120||typeof instructions!=='string'||!instructions.trim()||instructions.length>5000||typeof closed!=='boolean')throw problem(400,'Use a title up to 120 characters, instructions up to 5000 characters, and an open/closed status.');
+     const item=await mutate(async()=>{const x=await read(room),previous=rawId?x.assignments.find(a=>a.id===rawId):null;if(rawId&&!previous)throw problem(404,'Assignment not found.');if(!previous&&x.assignments.length>=100)throw problem(409,'This room already has 100 assignments.');const item={id:previous?.id||randomUUID(),title:title.trim(),instructions:instructions.trim(),closed,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};if(previous)x.assignments=x.assignments.map(a=>a.id===rawId?item:a);else x.assignments.unshift(item);await save(room,x);return item;});json(res,rawId?200:201,item);return;
+    }
+   }
+   if(resource==='submissions'){
+    if(req.method==='GET'&&!rawId){if(role!=='teacher')throw problem(403,'Only the teacher can list private submissions.');json(res,200,{submissions:(await read(room)).submissions.map(visibleSubmission)});return;}
+    if(req.method==='POST'&&!rawId){
+     if(uploads>=2)throw problem(429,'Another upload is in progress. Try again shortly.');uploads++;
+     try{
+      let name,studentName;try{name=decodeURIComponent(req.headers['x-project-name']||'');studentName=decodeURIComponent(req.headers['x-student-name']||'').trim();}catch{throw problem(400,'Invalid submission name.');}
+      const assignmentId=req.headers['x-assignment-id'];if(!identity.test(assignmentId||'')||!studentName||studentName.length>80||/[\x00-\x1f\x7f]/.test(studentName))throw problem(400,'Choose an assignment and a classroom alias up to 80 characters.');
+      const bytes=await body(req,MAX_UPLOAD);validateProjectArchive(bytes,name);const receiptKey=randomBytes(32).toString('base64url');
+      const item=await mutate(async()=>{const x=await read(room),assignment=x.assignments.find(a=>a.id===assignmentId);if(!assignment)throw problem(404,'Assignment not found.');if(assignment.closed)throw problem(409,'This assignment is closed. Ask your teacher to reopen it.');if(x.submissions.length>=200||[...x.projects,...x.submissions].reduce((n,p)=>n+p.bytes,0)+bytes.length>512*1024*1024)throw problem(409,'Room submission storage is full. Ask your teacher for help.');const item={id:randomUUID(),assignmentId,studentName,name,bytes:bytes.length,sha256:digest(bytes),createdAt:new Date().toISOString(),receiptHash:digest(receiptKey),review:null};const file=path.join(dataDir,room,item.id+'.bin');await mkdir(path.dirname(file),{recursive:true,mode:0o700});await writeFile(file,bytes,{flag:'wx',mode:0o600});try{x.submissions.unshift(item);await save(room,x);}catch(e){await rm(file,{force:true});throw e;}return item;});json(res,201,{submission:visibleSubmission(item),receiptKey});return;
+     }finally{uploads--;}
+    }
+    if(rawId&&identity.test(rawId)){
+     if(req.method==='GET'){
+      const item=(await read(room)).submissions.find(p=>p.id===rawId);if(!item)throw problem(404,'Submission not found.');const receipt=req.headers['x-submission-key'];if(role!=='teacher'&&(typeof receipt!=='string'||receipt.length>256||!equal(digest(receipt),item.receiptHash)))throw problem(403,'Open your private submission receipt to view this work.');
+      if(!action){json(res,200,visibleSubmission(item));return;}
+      if(action==='file'){res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':item.bytes,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(item.name)}`,'Cache-Control':'no-store'});createReadStream(path.join(dataDir,room,rawId+'.bin')).on('error',()=>res.destroy()).pipe(res);return;}
+     }
+     if(req.method==='POST'&&action==='review'){
+      if(role!=='teacher')throw problem(403,'Only the teacher can review submissions.');let payload;try{payload=JSON.parse((await body(req,12000)).toString('utf8'));}catch(e){if(e.status)throw e;throw problem(400,'Expected review feedback.');}if(!['reviewed','revise','complete'].includes(payload?.status)||typeof payload?.feedback!=='string'||payload.feedback.length>3000)throw problem(400,'Choose a review status and feedback up to 3000 characters.');const item=await mutate(async()=>{const x=await read(room),item=x.submissions.find(p=>p.id===rawId);if(!item)throw problem(404,'Submission not found.');item.review={status:payload.status,feedback:payload.feedback.trim(),updatedAt:new Date().toISOString()};await save(room,x);return visibleSubmission(item);});json(res,200,item);return;
+     }
     }
    }
    if(resource==='variables'){
