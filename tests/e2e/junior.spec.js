@@ -65,6 +65,8 @@ test('full App Junior has directly editable parallel stacks, saved positions and
   expect(manifest.junior.scenes[0].sprites[0].scripts[0].canvas).toEqual({x:107,y:57});
   await expect.poll(async()=>(await storedJunior(page))?.scenes[0].sprites[0].scripts[0].canvas).toEqual({x:107,y:57});
   await page.reload();await navigate(page,'Junior Blocks');
+  // Editable story DOM restores before the iframe bridge is listening.
+  await expect(page.getByRole('button',{name:'Play story',exact:true})).toBeEnabled({timeout:60000});
   await expect(stacks).toHaveCount(2);await expect(stacks.nth(0)).toHaveCSS('left','107px');
   await expect(stacks.nth(0).getByRole('spinbutton',{name:'Move pixels',exact:true})).toHaveValue('31');
   await importStory(page,saved);await expect(stacks.nth(0)).toHaveCSS('top','57px');
