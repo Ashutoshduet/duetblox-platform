@@ -26,7 +26,7 @@ test('older controller cannot prepare stale files, and preparation rechecks the 
  const prepare=page.getByRole('button',{name:'Make available offline',exact:true});
  await expect(page.getByRole('heading',{name:'A newer version is available',exact:true})).toBeVisible();
  await expect(prepare).toBeDisabled();
- await expect(page.getByRole('link',{name:'Load latest version',exact:true})).toHaveAttribute('href','/duetblox/update.html');
+ await expect(page.getByRole('link',{name:'Load latest version',exact:true})).toHaveAttribute('href',`/duetblox/update.html?release=${latestVersion}`);
  expect(await page.evaluate(()=>window.offlineProbe.prepareCalls)).toBe(0);
  await page.evaluate(version=>{window.offlineProbe.version=version;},latestVersion);
  await page.getByRole('button',{name:'Check status',exact:true}).click();
