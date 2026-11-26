@@ -4,6 +4,17 @@ test('client uses authenticated requests, keeps keys out of state and rejects mi
 test('disconnect aborts in-flight work and late responses cannot reconnect',async()=>{let release;const service=new ClassroomService({fetchImpl:()=>new Promise(resolve=>{release=resolve;})});const pending=service.connect({url:'http://127.0.0.1:5191',room:'classroom',key});service.disconnect();release(json({room:'classroom',role:'student'}));await assert.rejects(pending,/changed|cancelled/);assert.equal(service.getState().connected,false);});
 test('client rejects invalid origin, credentials and nonnumeric cloud payloads',async()=>{const service=new ClassroomService({fetchImpl:async()=>json({room:'classroom',role:'student'})});for(const url of ['javascript:alert(1)','https://user:pass@example.com','https://example.com/path'])await assert.rejects(service.connect({url,room:'classroom',key}));await service.connect({url:'http://127.0.0.1:5191',room:'classroom',key});assert.throws(()=>service.setVariable('score','2'),/numbers/);assert.throws(()=>service.setVariable('score',Infinity),/numbers/);assert.throws(()=>service.rpc('deleteEverything'),/Unsupported/);assert.throws(()=>service.downloadProject('../private'),/Invalid/);});
 test('default browser fetch keeps its global receiver and a network loss disconnects',async()=>{const original=globalThis.fetch;let lose=false;globalThis.fetch=async function(){assert.equal(this,globalThis);if(lose)throw new TypeError('Network unavailable');return json({room:'classroom',role:'student'});};try{const service=new ClassroomService();await service.connect({url:'http://127.0.0.1:5191',room:'classroom',key});lose=true;await assert.rejects(service.getVariables(),/Cannot reach/);assert.equal(service.getState().connected,false);assert.equal(service.credentials,null);}finally{globalThis.fetch=original;}});
+test('failed browser connection suggests server and permission checks without retaining credentials',async()=>{
+ const service=new ClassroomService({fetchImpl:async()=>{throw new TypeError('Failed to fetch');}});
+ await assert.rejects(service.connect({url:'http://127.0.0.1:5191',room:'classroom',key}),error=>{
+  assert.match(error.message,/Check that it is running, its address and allowed browser origin/);
+  assert.match(error.message,/local-network or loopback permission/);
+  assert.match(error.message,/Teacher setup and network notes/);
+  return true;
+ });
+ assert.equal(service.getState().connected,false);assert.equal(service.credentials,null);
+ assert.equal(JSON.stringify(service.getState()).includes(key),false);
+});
 test('a mounted app keeps classroom requests on the teacher-supplied server origin',async()=>{
  const original=Object.getOwnPropertyDescriptor(globalThis,'location');
  Object.defineProperty(globalThis,'location',{configurable:true,value:{origin:'https://duetpower.in',href:'https://duetpower.in/duetblox/',pathname:'/duetblox/'}});

@@ -33,7 +33,21 @@ An alternative is to run each student's DUETBlox app on their own localhost orig
 node tools/classroom-server/server.mjs --host 0.0.0.0 --public-origin http://192.168.1.20:5191 --allow-origin http://127.0.0.1:5173
 ```
 
-Then students enter the LAN room-server address in their local app. Local browser feature availability and permission requirements still apply. The shared room requires network access to its server; cloud values and downloads do not function when disconnected. Offline projects remain local. Hosted HTTPS apps cannot generally fetch an HTTP LAN service because of browser mixed-content/local-network controls; use trusted HTTPS in that arrangement.
+Then students enter the LAN room-server address in their local app. Local browser feature availability and permission requirements still apply. The shared room requires network access to its server; cloud values and downloads do not function when disconnected. Offline projects remain local.
+
+## Connect the hosted app to your local server
+
+The public DUETBlox page does not include a hosted classroom backend. Start your own server and explicitly allow the app's origin. For the app at `https://duetpower.in/duetblox/` and a server on this same computer:
+
+```sh
+node tools/classroom-server/server.mjs --allow-origin https://duetpower.in
+```
+
+In the app, enter `http://127.0.0.1:5191` as the server address, plus the room and access key. Use the actual teacher-server address for a different computer: `127.0.0.1` always means the student's own computer. This option does not change the default loopback-only binding or expose your server to the Internet.
+
+Chrome requires permission for a public website to reach local-network or loopback services. When connecting, allow the request only if this is your trusted classroom server. If previously denied, open the app site's controls beside the address bar, review its local-network/loopback permission (labels vary by Chrome version), and retry. Browser permission and the server's exact-origin allowlist are separate requirements. A school-managed browser may require its administrator to permit the connection. Do not disable browser security, use wildcard origins or share your teacher key to resolve it. See [Chrome's Local Network Access explanation](https://developer.chrome.com/blog/local-network-access).
+
+An unreachable-server error can also mean the service is stopped, the address is wrong, a firewall blocks the connection, or the origin is not allowed; the app cannot distinguish all these causes from a failed `fetch`. Confirm the server is running and the address and origin match before changing permissions. Chrome's permission-gated local requests have specific mixed-content exemptions; this is not a guarantee that every browser or local hostname accepts HTTP. Trusted HTTPS remains necessary for encrypted classroom traffic and is the recommended multi-device setup.
 
 ## Assignments and private feedback
 
@@ -68,4 +82,4 @@ The API uses Bearer access keys and `/api/classroom/rooms/<room>/…`. Responses
 node --test tools/classroom-server/server.test.mjs src/classroom/client.test.js
 ```
 
-The tests use temporary data and loopback ports: authentication, origin/host checks, room isolation, upload validation/bounds, byte-exact downloads, teacher deletion, concurrent numeric writes, saved metadata, path/symlink protection, generated secrets, client cancellation, teacher-only assignment/review operations, private receipt authorization, cross-room rejection, byte-exact submission downloads, malformed/bounded payload rejection and submission persistence across a server restart. `tests/e2e/classroom-assignments.spec.js` covers the teacher/student workflow in separate browser contexts. They do not establish classroom Wi-Fi reachability, HTTPS deployment or student usability.
+The tests use temporary data and loopback ports: authentication, origin/host checks, room isolation, upload validation/bounds, byte-exact downloads, teacher deletion, concurrent numeric writes, saved metadata, path/symlink protection, generated secrets, client cancellation, teacher-only assignment/review operations, private receipt authorization, cross-room rejection, byte-exact submission downloads, malformed/bounded payload rejection and submission persistence across a server restart. `tests/e2e/classroom-assignments.spec.js` covers the teacher/student workflow in separate browser contexts. Its successful-connect test grants local-network access only to the tested app origin in those disposable contexts, modelling user consent through [Playwright's documented permission API](https://playwright.dev/docs/api/class-browsercontext#browser-context-grant-permissions). A separate denied-permission test runs when the app is served from a public HTTPS origin; local-origin runs skip that case because loopback-to-loopback does not require this permission. These tests do not change a user's Chrome profile or disable browser security, and do not establish classroom Wi-Fi reachability, HTTPS classroom-server deployment or student usability.

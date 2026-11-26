@@ -5,35 +5,35 @@ Live app: **https://duetpower.in/duetblox/**
 Public repository: **https://github.com/Ashutoshduet/duetblox-platform**
 
 ```sh
-git clone --branch codex/duetblox-studio-20261124 https://github.com/Ashutoshduet/duetblox-platform.git
+git clone --branch codex/learning-circuits-classroom-20261126 https://github.com/Ashutoshduet/duetblox-platform.git
 cd duetblox-platform
 ```
 
-DUETBlox 0.9.2 is a browser-first educational coding application using official Scratch components, an original Junior editor, local machine learning, Python and Arduino/ESP32 programming. This update adds complete workspace recovery before project replacement, stable Save / Save a copy behavior, dataset Undo that survives reload, accessible dialogs, mobile Junior Code/Stage views, a guided hardware workflow, persistent circuit Undo and browser navigation history. The preceding Junior redesign, Circuit Lab, Uno firmware simulation, analog/SPICE workspace and 13 English/Hindi/Hinglish lessons remain available. See [0.9.2 scope and validation](docs/release-0.9.2.md), [Junior validation](docs/junior-validation.md), and the [simulation guide](docs/simulation.md).
+DUETBlox 0.9.6 is a browser-first educational coding application using official Scratch components, an original Junior editor, local machine learning, Python and Arduino/ESP32 programming. This release adds protected direct starters for all 13 lessons, guided wiring and matching circuit programs, bounded run-to-breakpoint controls, private classroom assignments and teacher feedback, and board-specific observation sheets. Workspace recovery, accessible dialogs, mobile Junior Code/Stage views, Uno firmware simulation and the separate analog/SPICE workspace remain available. See the [0.9.6 changes and remaining limits](docs/student-comparison-2026-11.md#changes-made-in-096), [Junior validation](docs/junior-validation.md), and the [simulation guide](docs/simulation.md).
 
-The preceding 0.9.1 release was published under `/duetblox/` on 24 November 2026. Validation and publication for 0.9.2 are recorded separately in its release report; local validation alone does not establish that the hosted app is updated. Source work is on the branch above and in [pull request 1](https://github.com/Ashutoshduet/duetblox-platform/pull/1); `main` remains unchanged. Windows packaging, additional robot protocols and physical board acceptance remain outstanding.
+Current source work is on the development branch above, not `main`. Local validation alone does not establish that the hosted app is updated; check the running release before comparing results. The [0.9.2 report](docs/release-0.9.2.md) records that earlier release. Windows packaging, additional robot protocols and physical board acceptance remain outstanding.
 
 If the hosted app still shows the older navigation, save your project and use **Cmd+Shift+R** on Mac or **Ctrl+Shift+R** on Windows. Close older DUETBlox tabs after saving. Do not clear browser data: it contains local projects. Prepare the new offline pack again before disconnecting.
 
 ## Run locally
 
-If the supplied `dist/` build is already present, run `node scripts/serve-built.mjs` with Node.js 22 or later. This needs no npm install and serves only the built app on `http://127.0.0.1:5173`. Keep the terminal open. For development or rebuilding, use the steps below.
+If the supplied `dist/` build is already present, run `node scripts/serve-built.mjs` with Node.js 22 or later. This needs no npm install and prints the built app's exact address, normally `http://127.0.0.1:5173/duetblox/` for the DUETPower build. Keep the terminal open. For development or rebuilding, use the steps below.
 
 Use Node.js 22 or later and npm:
 
 ```sh
 npm ci
 npm --prefix apps/scratch-editor ci
-npm run build:editor
+DUETBLOX_BASE_PATH=/duetblox/ npm run build:editor
 npm run offline:download
 node scripts/restore-source-packets.mjs
-npm run build
-npm run dev
+DUETBLOX_BASE_PATH=/duetblox/ npm run build
+DUETBLOX_BASE_PATH=/duetblox/ npm run dev
 ```
 
 `offline:download` needs internet to acquire missing checksum-pinned model/media/Python runtime files; `restore-source-packets.mjs` restores the exact dependency source archives and verifies their checksums. The app source and all DUETBlox changes are in this repository; a complete supplied pack is verified locally. Normal builds verify the bundled files and do not silently fetch missing ones. Keep the lock files, notices and local packs when copying the project.
 
-Open the printed localhost URL. Desktop Chrome or Edge supports the intended Web Serial path. Production serves the complete `dist/` folder at an HTTPS origin or a dedicated directory. All bundled resources must remain available beneath that deployment directory. Each browser origin has its own local data; transfer projects with `.duet` files.
+Open the printed localhost URL, including `/duetblox/`. These commands use the same mount as DUETPower. For a dedicated root deployment, use `DUETBLOX_BASE_PATH=/` consistently when building the editor/app, starting development and running the editor tests. Vite requires the editor's built mount to match its own. Desktop Chrome or Edge supports the intended Web Serial path. Production serves the complete `dist/` folder at an HTTPS origin or a dedicated directory. All bundled resources must remain available beneath that deployment directory. Each browser origin has its own local data; transfer projects with `.duet` files.
 
 ### Deploy under a directory
 
@@ -45,7 +45,7 @@ Offline preparation is available in the production build (`npm start`), not the 
 
 The complete local folder can serve bundled files without internet while its server runs. Preparing the browser pack additionally makes those files available from browser storage when the source server is unavailable.
 
-1. Open the supplied local app at `http://127.0.0.1:5173`, or open the hosted production app while connected.
+1. Open the exact local address printed by `npm start` (normally `http://127.0.0.1:5173/duetblox/`), or open the hosted production app while connected.
 2. Choose **Offline → Make available offline**. Leave the page open until it says **Your offline pack is ready**. Allow several hundred megabytes of browser storage; the page shows the exact size for your build. Files are checked against the build's byte counts and SHA-256 hashes before being saved. **Cancel preparation** retains completed files for a later retry.
 3. Enable **Use offline mode** to serve the prepared app files and block external app network requests. The separately installed local Arduino compiler at localhost port 8765 and the private classroom API on literal local-network addresses remain permitted. Classroom sharing still needs its room server and a network connection to that server. Use the same browser profile, address and port when reopening. `localhost` and `127.0.0.1`, or different ports, are different storage locations.
 4. Keep **Save project** `.duet` downloads outside the browser. Clearing browser data or automatic storage eviction can remove cached app files, local projects and lesson progress. **Check / repair offline files** can verify or restore the pack when the source folder/server is available again. A newer release may need preparation again.
@@ -67,9 +67,9 @@ If Chrome or Edge offers **Install app**, DUETBlox can open in its own browser-m
 | Analog / SPICE | Local ngspice WASM; operating point, DC sweep, AC sweep and transient analysis; R/L/C, independent sources, diode/BJT/MOS models; measured traces, sample tables, CSV and netlist import/export; Stop and bounded worker execution | Separate analog solver. No MCU co-simulation. Numeric inline models only; no external files, control scripts or arbitrary expressions. See the simulation guide for limits. |
 | Python | Actual CPython, standard library, queued input, output/errors, immediate Stop, .py files and project persistence | No Scratch-to-Python conversion, graphical canvas, optional packages or MicroPython deployment. |
 | Object learning (experimental) | Student-labeled boxes, foreground/background crop training, still-image scans, holdout matches/misses/extra detections, project save/open and Scratch reporters | Fixed windows and learned crop classes, not learned localization. Limited scales/aspect ratios; false positives and missed objects remain. No live camera detector or MCU deployment. |
-| Classroom | Teacher/student room keys, project gallery, shared numeric variables and Blocks integration; explicit LAN opt-in | Private service required. Keys stay in browser memory. Last-write-wins values; no atomic counters, public profiles or comments. |
+| Classroom | Teacher/student room keys, project gallery, shared numeric variables and Blocks integration; assignments, private submissions with retrieval receipts, and teacher review feedback; explicit LAN opt-in | Teacher-run LAN server is supplied as source and must run separately; publishing the static app does not deploy it. Aliases are self-reported, not individually authenticated identities. Keys stay in browser memory. Last-write-wins values; no atomic counters, public profiles or comments. |
 | Projects | IndexedDB local saves; `.duet` v5 contains Junior, Scratch, Python, the per-board circuit library, the editable SPICE netlist, training datasets/models, prediction settings and separate image/sound/pose evaluation datasets; opens v1–v5 projects | Reports must be rerun after loading or replacing a model. Keep downloaded backups. Browser data can be cleared; no cloud sync. |
-| Learn step by step | Thirteen English/Hindi/Hinglish lessons covering Junior stories, Scratch sequences, image testing, text classification, Arduino and other existing guided activities; real Junior/text starter downloads; collapsible guide available while coding; local manual checkmarks | Progress is self-reported, stored in this browser and separate from `.duet` projects. These lessons do not automatically assess learning or certify hardware success. Editor controls retain their existing language. |
+| Learn step by step | Thirteen English/Hindi/Hinglish lessons covering Junior stories, Scratch sequences, image testing, text classification, Arduino and other existing guided activities; direct starters for all 13 lessons, with the previous complete workspace saved as a recovery copy before replacement; collapsible guide available while coding; local manual checkmarks | Progress is self-reported, stored in this browser and separate from `.duet` projects. These lessons do not automatically assess learning or certify hardware success. Editor controls retain their existing language. |
 | Offline | Production service worker, verified pack preparation, progress/cancel/repair controls, explicit offline mode and optional browser installation | Browser storage can be evicted. Cloud services, model URL imports and external videos are not supplied locally. Native compiler/toolchain setup is separate. No Windows `.exe` package yet. |
 
 ## Try it
@@ -86,8 +86,10 @@ If Chrome or Edge offers **Install app**, DUETBlox can open in its own browser-m
 
 ```sh
 npm test
-npm --prefix apps/scratch-editor test
+DUETBLOX_BASE_PATH=/duetblox/ npm --prefix apps/scratch-editor test
 ```
+
+The editor harness must use the same `DUETBLOX_BASE_PATH` as the existing assets in `public/scratch/`; use `/` instead if they were built for the root. A mismatched mount causes asset-loading failures and invalidates the run. These are DUETBlox integration tests against the pinned official Scratch components, not the complete upstream Scratch test suite.
 
 For the full-app Playwright checks, start a dedicated development server in one terminal:
 
@@ -101,11 +103,11 @@ Then use a separate terminal:
 DUETBLOX_TEST_URL=http://127.0.0.1:5200/duetblox/ npm run test:e2e
 ```
 
-These tests launch isolated Chrome contexts; they do not attach to a user's browser. Chrome must be installed. `DUETBLOX_TEST_CHANNEL` selects another installed Playwright browser channel. The production offline case deliberately skips on the development server; use the [production test procedure](docs/simulation.md#production-offline-check). Final aggregate results for this release are recorded in [the release report](docs/release-0.9.2.md#verification).
+These tests launch isolated Chrome contexts; they do not attach to a user's browser. Chrome must be installed. `DUETBLOX_TEST_CHANNEL` selects another installed Playwright browser channel. The production offline case deliberately skips on the development server; use the [production test procedure](docs/simulation.md#production-offline-check). Dated release reports describe their own builds; rerun the checks for the current checkout and record the tested version, mount and pass/fail/skip counts.
 
 See [release validation](docs/validation.md), [0.5.0 changes](docs/release-0.5.0.md), [0.4.0 changes and limitations](docs/release-0.4.0.md), [0.3.0 baseline](docs/release-0.3.0.md), [Junior checks](docs/junior-validation.md), [ML checks](docs/ml-multimodal.md), [local ML assets](docs/offline-models.md), [hardware readiness](docs/hardware-readiness.md), and [hardware documentation](docs/hardware.md). Tests distinguish protocol emulation, actual toolchain compilation, browser behavior and physical validation. A successful cache build alone does not establish successful offline training or real hardware operation. No physical upload success is claimed.
 
-The editor harness is `npm --prefix apps/scratch-editor test`; it uses local Chrome. Current integrated checks use isolated development-test Chrome and the real Scratch VM; earlier in-app-browser checks remain dated historical evidence. For firmware regeneration, use `src/hardware/build-firmware-bundles.mjs` with the documented pinned CLI/core/library versions.
+The editor harness uses local Chrome and the mount-aware command above. Current integrated checks use isolated development-test Chrome and the real Scratch VM; earlier in-app-browser checks remain dated historical evidence. For firmware regeneration, use `src/hardware/build-firmware-bundles.mjs` with the documented pinned CLI/core/library versions.
 
 ## Source and architecture
 
