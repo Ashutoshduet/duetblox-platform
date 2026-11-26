@@ -1,0 +1,103 @@
+.zuni-welcome {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(110px, .9fr) minmax(0, 1fr);
+  grid-template-areas: "art copy" "art action";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 16px;
+  flex: 0 1 440px;
+  width: 440px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 25px 24px 22px 14px;
+  border: 1px solid #dccde9;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #f5effb 0%, #fcf8ff 66%, #edf8f2 100%);
+  box-shadow: 0 8px 24px #54345f0a;
+  color: #49305f;
+}
+.zuni-welcome-art {
+  grid-area: art;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.zuni-welcome-art img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+.zuni-welcome-orbit {
+  position: absolute;
+  inset: 13% 1% 10%;
+  border-radius: 50%;
+  background: #eadff5;
+  box-shadow: 0 0 0 9px #ffffff70;
+}
+.zuni-welcome-block {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 5px #54345f12;
+}
+.zuni-welcome-block-mint {top: 7%; left: 4%; background: #8bd5c3; transform: rotate(-12deg);}
+.zuni-welcome-block-peach {right: 0; bottom: 10%; background: #f3b67c; transform: rotate(15deg);}
+.zuni-welcome-copy {grid-area: copy; align-self: end; min-width: 0;}
+.zuni-welcome-eyebrow {display: block; margin-bottom: 9px; font-size: 10px; font-weight: 750; letter-spacing: 1.1px; line-height: 1.5; color: #705682;}
+.zuni-welcome h2 {margin: 0; font-size: clamp(23px, 2.1vw, 29px); font-weight: 800; line-height: 1.2; letter-spacing: -.7px; color: #49305f;}
+.home-intro .zuni-welcome-copy p {margin: 10px 0 0; font-size: 15px; line-height: 1.55; color: #665372;}
+.zuni-welcome-action {grid-area: action; align-self: start; min-width: 0;}
+.zuni-welcome-start {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid #68418a;
+  border-radius: 11px;
+  background: #68418a;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+  transition: background-color .15s, box-shadow .15s;
+}
+.zuni-welcome-start:hover:not(:disabled) {background: #563371; border-color: #563371; box-shadow: 0 3px 9px #54345f24;}
+.zuni-welcome-start:focus-visible {outline: 3px solid #236fba; outline-offset: 4px;}
+.zuni-welcome-start:disabled {cursor: wait; opacity: .55;}
+.home-intro .zuni-welcome-notice {margin: 9px 0 0; font-size: 11px; line-height: 1.5; color: #725f7c;}
+
+/* Keep the character visible where the older abstract hero was hidden. */
+@media (max-width: 900px) {
+  .home-intro:has(> .zuni-welcome) {flex-direction: column; align-items: stretch; gap: 22px;}
+  .zuni-welcome {flex: none; width: 100%; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr); column-gap: 20px; padding: 21px 25px 21px 16px;}
+  .zuni-welcome-start {max-width: 240px;}
+}
+@media (max-width: 480px) {
+  .zuni-welcome {grid-template-columns: minmax(82px, .8fr) minmax(0, 1fr); grid-template-areas: "art copy" "action action"; column-gap: 12px; row-gap: 16px; padding: 18px 16px 16px; border-radius: 20px;}
+  .zuni-welcome-copy {align-self: center;}
+  .zuni-welcome-eyebrow {font-size: 9px; letter-spacing: .7px; margin-bottom: 7px;}
+  .zuni-welcome h2 {font-size: 24px;}
+  .home-intro .zuni-welcome-copy p {font-size: 14px; margin-top: 8px;}
+  .zuni-welcome-start {max-width: none; min-height: 48px; font-size: 15px;}
+  .home-intro .zuni-welcome-notice {text-align: center; font-size: 11px;}
+}
+@media (prefers-reduced-motion: reduce) {
+  .zuni-welcome-start {transition: none;}
+  .zuni-welcome-start:active:not(:disabled) {transform: none;}
+}

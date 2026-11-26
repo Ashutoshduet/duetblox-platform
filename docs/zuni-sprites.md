@@ -2,6 +2,8 @@
 
 Zuni, DUETBlox's original robot-fox companion, is also an optional stage character in both editors. Existing stories and the default characters stay as they are.
 
+The main **Workspace** welcome screen also shows Zuni. **Create with Zuni** opens a short Junior example that moves, speaks, jumps and finishes in the Cheer costume, with the existing first-story lesson guide. It saves a complete recovery copy of the current workspace before opening the example; if that backup cannot be saved, the existing work stays open. Merely visiting the welcome screen does not start or replace a story.
+
 - **Junior Blocks:** select **Add character → Zuni**. In **Looks**, use **Costume** to choose a pose or **Next costume** to animate. **Edit character & scene → Starting costume** sets the initial pose.
 - **Blocks:** open **Choose a Sprite**, search for **Zuni**, and select it. The **Costumes** tab contains all six editable vector costumes. The standard **switch costume to** and **next costume** Looks blocks control them.
 
